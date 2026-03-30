@@ -4,9 +4,8 @@ import { randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { DatabaseSync } from "node:sqlite";
 import bcrypt from "bcryptjs";
-import { Pool as NeonPool, neonConfig } from "@neondatabase/serverless";
+import { neon } from "@neondatabase/serverless";
 import postgres, { Sql } from "postgres";
-import ws from "ws";
 
 const dataDir = path.join(process.cwd(), "data");
 const dbPath = path.join(dataDir, "vault.db");
@@ -14,7 +13,7 @@ const dbPath = path.join(dataDir, "vault.db");
 type GlobalWithDb = typeof globalThis & {
   __vaultDb?: DatabaseSync;
   __vaultPg?: Sql;
-  __vaultNeonPool?: NeonPool;
+  __vaultNeon?: ReturnType<typeof neon>;
   __vaultInitPromise?: Promise<void>;
   __vaultPgCompatReady?: boolean;
   __vaultForceSqliteFallback?: boolean;
@@ -169,8 +168,7 @@ function toPgPlaceholders(query: string) {
 function runPostgresSyncCommand<T>(payload: Record<string, unknown>) {
   const script = `
     import postgres from "postgres";
-    import { Pool, neonConfig } from "@neondatabase/serverless";
-    import ws from "ws";
+    import { neon } from "@neondatabase/serverless";
 
     const payload = JSON.parse(Buffer.from(process.env.NIMBUS_PG_PAYLOAD, "base64").toString("utf8"));
     const isNeon = /neon\\.tech/i.test(payload.connectionString ?? "");
@@ -182,31 +180,25 @@ function runPostgresSyncCommand<T>(payload: Record<string, unknown>) {
           idle_timeout: 1,
           connect_timeout: 20,
         });
-    const pool = (() => {
-      if (!isNeon) return null;
-      neonConfig.webSocketConstructor = ws;
-      return new Pool({
-        connectionString: payload.connectionString,
-      });
-    })();
+    const httpSql = isNeon ? neon(payload.connectionString) : null;
 
     try {
       let result;
       if (payload.kind === "exec") {
-        if (pool) {
-          result = await pool.query(payload.query);
+        if (httpSql) {
+          result = await httpSql.query(payload.query);
         } else {
           result = await sql.unsafe(payload.query);
         }
         process.stdout.write(JSON.stringify({ ok: true }));
       } else {
-        const rows = pool
-          ? await pool.query(payload.query, payload.params ?? [])
+        const rows = httpSql
+          ? await httpSql.query(payload.query, payload.params ?? [])
           : await sql.unsafe(payload.query, payload.params ?? []);
         process.stdout.write(JSON.stringify({
           ok: true,
-          rows: pool ? rows.rows : rows,
-          count: pool ? (rows.rowCount ?? rows.rows.length ?? 0) : (rows.count ?? rows.length ?? 0),
+          rows: httpSql ? rows : rows,
+          count: httpSql ? (rows.length ?? 0) : (rows.count ?? rows.length ?? 0),
         }));
       }
     } catch (error) {
@@ -215,9 +207,6 @@ function runPostgresSyncCommand<T>(payload: Record<string, unknown>) {
       }));
       process.exit(1);
     } finally {
-      if (pool) {
-        await pool.end();
-      }
       if (sql) {
         await sql.end({ timeout: 1 });
       }
@@ -365,28 +354,25 @@ function normalizePgQuery(query: string) {
   return query.includes("?") ? toPgPlaceholders(query) : query;
 }
 
-function getNeonPool() {
+function getNeonClient() {
   const globalWithDb = globalThis as GlobalWithDb;
 
-  if (!globalWithDb.__vaultNeonPool) {
-    neonConfig.webSocketConstructor = ws;
-    globalWithDb.__vaultNeonPool = new NeonPool({
-      connectionString: process.env.DATABASE_URL!,
-    });
+  if (!globalWithDb.__vaultNeon) {
+    globalWithDb.__vaultNeon = neon(process.env.DATABASE_URL!);
   }
 
-  return globalWithDb.__vaultNeonPool;
+  return globalWithDb.__vaultNeon;
 }
 
 async function runPgQuery<T>(query: string, params: unknown[] = []) {
   const normalized = normalizePgQuery(query);
 
   if (isNeonConnectionString()) {
-    const pool = getNeonPool();
-    const result = await pool.query(normalized, params as unknown[]);
+    const client = getNeonClient();
+    const result = (await client.query(normalized, params as unknown[])) as unknown[];
     return {
-      rows: result.rows as T[],
-      count: result.rowCount ?? result.rows.length ?? 0,
+      rows: result as T[],
+      count: result.length,
     };
   }
 
@@ -400,8 +386,8 @@ async function runPgQuery<T>(query: string, params: unknown[] = []) {
 
 async function runPgExec(query: string) {
   if (isNeonConnectionString()) {
-    const pool = getNeonPool();
-    await pool.query(query);
+    const client = getNeonClient();
+    await client.query(query);
     return;
   }
 
