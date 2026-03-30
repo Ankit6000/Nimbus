@@ -11,6 +11,7 @@ import {
 } from "@/lib/google";
 import {
   createAuditLog,
+  createAuditLogAsync,
   createAppleAccountLink,
   authenticateUser,
   createHiddenAccountAssignment,
@@ -100,15 +101,20 @@ export async function createManagedMemberAction(formData: FormData) {
 
   try {
     const userId = await createManagedMember({ username, email, password, fullName });
-    createAuditLog({
+    await createAuditLogAsync({
       actorUserId: admin.id,
       targetUserId: userId,
       action: "member.create",
       details: `Created member ${username}.`,
     });
     redirect("/admin/dashboard?admin=member-created");
-  } catch {
-    redirect("/admin/dashboard?admin=member-error");
+  } catch (error) {
+    const message = error instanceof Error ? error.message.toLowerCase() : "";
+    const isDuplicate =
+      message.includes("unique") ||
+      message.includes("duplicate") ||
+      message.includes("already exists");
+    redirect(`/admin/dashboard?admin=${isDuplicate ? "member-duplicate" : "member-error"}`);
   }
 }
 

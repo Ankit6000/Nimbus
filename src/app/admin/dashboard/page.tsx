@@ -22,6 +22,7 @@ const adminMessages: Record<string, string> = {
   "member-updated": "Member updated successfully.",
   "member-deleted": "Member deleted successfully.",
   "member-invalid": "Fill in all member fields before saving.",
+  "member-duplicate": "That username or email is already in use.",
   "member-error": "Could not save that member. The username or email may already exist.",
   "account-added": "Hidden account assigned successfully.",
   "account-updated": "Hidden account updated successfully.",

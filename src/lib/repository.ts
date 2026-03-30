@@ -1579,7 +1579,6 @@ export async function createManagedMember(input: {
   password: string;
   fullName: string;
 }) {
-  const db = getDb();
   const id = randomUUID();
   const now = new Date().toISOString();
   const passwordHash = await bcrypt.hash(input.password, 10);
@@ -1590,28 +1589,21 @@ export async function createManagedMember(input: {
     .join("")
     .slice(0, 2);
 
-  db.prepare(
+  await dbRun(
     `
       INSERT INTO users (id, username, email, password_hash, full_name, avatar, role_label, is_admin, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
     `,
-  ).run(
-    id,
-    input.username,
-    input.email,
-    passwordHash,
-    input.fullName,
-    avatar || "NV",
-    "Private Vault Member",
-    now,
+    [id, input.username, input.email, passwordHash, input.fullName, avatar || "NV", "Private Vault Member", now],
   );
 
-  db.prepare(
+  await dbRun(
     `
       INSERT INTO icloud_connections (user_id, connected, apple_email, last_sync, pending_items)
       VALUES (?, 0, NULL, NULL, 0)
     `,
-  ).run(id);
+    [id],
+  );
 
   return id;
 }
@@ -2554,6 +2546,28 @@ export function createAuditLog(input: {
     input.action,
     input.details ?? null,
     new Date().toISOString(),
+  );
+}
+
+export async function createAuditLogAsync(input: {
+  actorUserId: string;
+  targetUserId?: string | null;
+  action: string;
+  details?: string | null;
+}) {
+  await dbRun(
+    `
+      INSERT INTO audit_logs (id, actor_user_id, target_user_id, action, details, created_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `,
+    [
+      randomUUID(),
+      input.actorUserId,
+      input.targetUserId ?? null,
+      input.action,
+      input.details ?? null,
+      new Date().toISOString(),
+    ],
   );
 }
 
