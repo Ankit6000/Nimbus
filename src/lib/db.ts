@@ -167,20 +167,22 @@ function toPgPlaceholders(query: string) {
 
 function runPostgresSyncCommand<T>(payload: Record<string, unknown>) {
   const script = `
-    import postgres from "postgres";
-    import { neon } from "@neondatabase/serverless";
-
     const payload = JSON.parse(Buffer.from(process.env.NIMBUS_PG_PAYLOAD, "base64").toString("utf8"));
     const isNeon = /neon\\.tech/i.test(payload.connectionString ?? "");
+    const { neon } = await import("@neondatabase/serverless");
+    const httpSql = isNeon ? neon(payload.connectionString) : null;
     const sql = isNeon
       ? null
-      : postgres(payload.connectionString, {
-          ssl: payload.sslMode,
-          max: 1,
-          idle_timeout: 1,
-          connect_timeout: 20,
-        });
-    const httpSql = isNeon ? neon(payload.connectionString) : null;
+      : await (async () => {
+          const postgresModule = await import("postgres");
+          const postgres = postgresModule.default;
+          return postgres(payload.connectionString, {
+            ssl: payload.sslMode,
+            max: 1,
+            idle_timeout: 1,
+            connect_timeout: 20,
+          });
+        })();
 
     try {
       let result;
