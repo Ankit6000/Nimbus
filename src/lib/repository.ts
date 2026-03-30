@@ -580,6 +580,25 @@ export function listGoogleAccountsForUser(userId: string) {
   }>;
 }
 
+export async function listGoogleAccountsForUserAsync(userId: string) {
+  return dbAll<{
+    id: string;
+    google_email: string;
+    refresh_token: string | null;
+    scopes: string | null;
+    kind: string;
+    status: string;
+  }>(
+    `
+      SELECT id, google_email, refresh_token, scopes, kind, status
+      FROM hidden_google_accounts
+      WHERE user_id = ?
+      ORDER BY created_at ASC
+    `,
+    [userId],
+  );
+}
+
 export function getHiddenGoogleAccountAssignment(userId: string, label: string) {
   const db = getDb();
   return db
@@ -592,6 +611,34 @@ export function getHiddenGoogleAccountAssignment(userId: string, label: string) 
       `,
     )
     .get(userId, label) as
+    | {
+        id: string;
+        account_label: string;
+        google_email: string;
+        refresh_token: string | null;
+        scopes: string | null;
+        status: string;
+      }
+    | undefined;
+}
+
+export async function getHiddenGoogleAccountAssignmentAsync(userId: string, label: string) {
+  return ((await dbGet<{
+    id: string;
+    account_label: string;
+    google_email: string;
+    refresh_token: string | null;
+    scopes: string | null;
+    status: string;
+  }>(
+    `
+      SELECT id, account_label, google_email, refresh_token, scopes, status
+      FROM hidden_google_accounts
+      WHERE user_id = ? AND account_label = ?
+      LIMIT 1
+    `,
+    [userId, label],
+  )) ?? undefined) as
     | {
         id: string;
         account_label: string;
@@ -1329,6 +1376,24 @@ export function getPreferredGoogleUploadTargets(userId: string) {
     .map((row) => row as ConnectedGoogleUploadTarget);
 }
 
+export async function getPreferredGoogleUploadTargetsAsync(userId: string) {
+  const rows = await dbAll<ConnectedGoogleUploadTarget>(
+    `
+      SELECT id, user_id, account_label, google_email, refresh_token, total_bytes, used_bytes
+      FROM hidden_google_accounts
+      WHERE user_id = ? AND refresh_token IS NOT NULL
+      ORDER BY (total_bytes - used_bytes) DESC, created_at ASC
+    `,
+    [userId],
+  );
+
+  return rows.map((row) => ({
+    ...row,
+    total_bytes: Number(row.total_bytes),
+    used_bytes: Number(row.used_bytes),
+  }));
+}
+
 export function getGoogleUploadTargetForPath(userId: string, folderPath: string) {
   const folder = folderPath
     ? listDriveFoldersAtPath(userId, folderPath).find((entry) => entry.fullPath === folderPath)
@@ -1354,6 +1419,33 @@ export function getGoogleUploadTargetForPath(userId: string, folderPath: string)
   return getPreferredGoogleUploadTargets(userId)[0] ?? null;
 }
 
+export async function getGoogleUploadTargetForPathAsync(userId: string, folderPath: string) {
+  const folder = folderPath
+    ? (await listDriveFoldersAtPathAsync(userId, folderPath)).find((entry) => entry.fullPath === folderPath)
+    : null;
+
+  if (folder?.sourceAccountId) {
+    const target = (await dbGet<ConnectedGoogleUploadTarget>(
+      `
+        SELECT id, user_id, account_label, google_email, refresh_token, total_bytes, used_bytes
+        FROM hidden_google_accounts
+        WHERE id = ? AND refresh_token IS NOT NULL
+        LIMIT 1
+      `,
+      [folder.sourceAccountId],
+    )) as ConnectedGoogleUploadTarget | null;
+    if (target) {
+      return {
+        ...target,
+        total_bytes: Number(target.total_bytes),
+        used_bytes: Number(target.used_bytes),
+      };
+    }
+  }
+
+  return (await getPreferredGoogleUploadTargetsAsync(userId))[0] ?? null;
+}
+
 export function getSourceGoogleAccountById(accountId: string) {
   const db = getDb();
   return db
@@ -1366,6 +1458,32 @@ export function getSourceGoogleAccountById(accountId: string) {
       `,
     )
     .get(accountId) as
+    | {
+        id: string;
+        user_id: string;
+        account_label: string;
+        google_email: string;
+        refresh_token: string | null;
+      }
+    | undefined;
+}
+
+export async function getSourceGoogleAccountByIdAsync(accountId: string) {
+  return ((await dbGet<{
+    id: string;
+    user_id: string;
+    account_label: string;
+    google_email: string;
+    refresh_token: string | null;
+  }>(
+    `
+      SELECT id, user_id, account_label, google_email, refresh_token
+      FROM hidden_google_accounts
+      WHERE id = ?
+      LIMIT 1
+    `,
+    [accountId],
+  )) ?? undefined) as
     | {
         id: string;
         user_id: string;
@@ -1655,6 +1773,50 @@ export function upsertHiddenGoogleAccountCredential(input: {
   return id;
 }
 
+export async function upsertHiddenGoogleAccountCredentialAsync(input: {
+  userId: string;
+  label: string;
+  googleEmail: string;
+  refreshToken: string;
+  scopes: string;
+}) {
+  const existing = (await dbGet<{ id: string }>(
+    `
+      SELECT id
+      FROM hidden_google_accounts
+      WHERE user_id = ? AND account_label = ?
+      LIMIT 1
+    `,
+    [input.userId, input.label],
+  )) ?? undefined;
+
+  if (existing) {
+    await dbRun(
+      `
+        UPDATE hidden_google_accounts
+        SET refresh_token = ?, scopes = ?, status = 'connected', last_synced_at = ?
+        WHERE id = ?
+      `,
+      [input.refreshToken, input.scopes, new Date().toISOString(), existing.id],
+    );
+
+    return existing.id;
+  }
+
+  const id = randomUUID();
+  const now = new Date().toISOString();
+  await dbRun(
+    `
+      INSERT INTO hidden_google_accounts
+      (id, user_id, account_label, google_email, refresh_token, scopes, total_bytes, used_bytes, kind, status, last_synced_at, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, 0, 0, 'drive', 'connected', ?, ?)
+    `,
+    [id, input.userId, input.label, input.googleEmail, input.refreshToken, input.scopes, now, now],
+  );
+
+  return id;
+}
+
 export function upsertDriveSnapshot(
   accountId: string,
   totalBytes: number,
@@ -1734,6 +1896,133 @@ export function upsertDriveSnapshot(
   }
 }
 
+export async function upsertDriveSnapshotAsync(
+  accountId: string,
+  totalBytes: number,
+  usedBytes: number,
+  items: Array<{
+    name: string;
+    size: number;
+    type: string;
+    updatedAt: string;
+    targetSection: "photos" | "drive";
+    sourceLabel: string;
+    meta?: Record<string, unknown>;
+  }>,
+) {
+  const account = (await dbGet<{ user_id: string }>(
+    "SELECT user_id FROM hidden_google_accounts WHERE id = ? LIMIT 1",
+    [accountId],
+  )) ?? null;
+
+  if (!account) return;
+
+  await dbRun(
+    `
+      UPDATE hidden_google_accounts
+      SET total_bytes = ?, used_bytes = ?, status = 'synced', last_synced_at = ?
+      WHERE id = ?
+    `,
+    [totalBytes, usedBytes, new Date().toISOString(), accountId],
+  );
+
+  await dbRun(
+    "DELETE FROM vault_items WHERE user_id = ? AND section = 'drive' AND source = 'google-drive' AND source_account_id = ?",
+    [account.user_id, accountId],
+  );
+  await dbRun(
+    "DELETE FROM vault_items WHERE user_id = ? AND section = 'photos' AND source = 'google-drive' AND source_account_id = ?",
+    [account.user_id, accountId],
+  );
+  await dbRun(
+    "DELETE FROM vault_items WHERE user_id = ? AND section = 'videos' AND source = 'google-drive' AND source_account_id = ?",
+    [account.user_id, accountId],
+  );
+
+  for (const item of items) {
+    const baseMeta = item.meta ?? {};
+    const fileId = typeof baseMeta.fileId === "string" ? baseMeta.fileId : null;
+
+    await dbRun(
+      `
+        INSERT INTO vault_items
+        (id, user_id, section, title, subtitle, bytes, item_kind, source, source_account_id, occurred_at, unread, meta_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'google-drive', ?, ?, 0, ?)
+      `,
+      [
+        randomUUID(),
+        account.user_id,
+        "drive",
+        item.name,
+        item.sourceLabel,
+        item.size,
+        item.type,
+        accountId,
+        item.updatedAt,
+        JSON.stringify(baseMeta),
+      ],
+    );
+
+    if (item.type === "image") {
+      await dbRun(
+        `
+          INSERT INTO vault_items
+          (id, user_id, section, title, subtitle, bytes, item_kind, source, source_account_id, occurred_at, unread, meta_json)
+          VALUES (?, ?, 'photos', ?, ?, ?, 'image', 'google-drive', ?, ?, 0, ?)
+        `,
+        [
+          randomUUID(),
+          account.user_id,
+          item.name,
+          item.sourceLabel,
+          item.size,
+          accountId,
+          item.updatedAt,
+          JSON.stringify(baseMeta),
+        ],
+      );
+    }
+
+    if (item.type === "video") {
+      const videoMeta = { ...baseMeta, fileId };
+      await dbRun(
+        `
+          INSERT INTO vault_items
+          (id, user_id, section, title, subtitle, bytes, item_kind, source, source_account_id, occurred_at, unread, meta_json)
+          VALUES (?, ?, 'photos', ?, ?, ?, 'video', 'google-drive', ?, ?, 0, ?)
+        `,
+        [
+          randomUUID(),
+          account.user_id,
+          item.name,
+          item.sourceLabel,
+          item.size,
+          accountId,
+          item.updatedAt,
+          JSON.stringify(videoMeta),
+        ],
+      );
+      await dbRun(
+        `
+          INSERT INTO vault_items
+          (id, user_id, section, title, subtitle, bytes, item_kind, source, source_account_id, occurred_at, unread, meta_json)
+          VALUES (?, ?, 'videos', ?, ?, ?, 'video', 'google-drive', ?, ?, 0, ?)
+        `,
+        [
+          randomUUID(),
+          account.user_id,
+          item.name,
+          item.sourceLabel,
+          item.size,
+          accountId,
+          item.updatedAt,
+          JSON.stringify(videoMeta),
+        ],
+      );
+    }
+  }
+}
+
 export function createVirtualFolderRecord(input: {
   userId: string;
   sourceAccountId: string;
@@ -1772,6 +2061,13 @@ export function deleteFolderSnapshot(userId: string, accountId: string) {
     .run(userId, accountId);
 }
 
+export async function deleteFolderSnapshotAsync(userId: string, accountId: string) {
+  await dbRun(
+    "DELETE FROM vault_items WHERE user_id = ? AND section = 'drive' AND item_kind = 'folder' AND source = 'google-drive' AND source_account_id = ?",
+    [userId, accountId],
+  );
+}
+
 export function listGoogleBackedPhotoItems(userId: string) {
   return listVaultItemsBySection(userId, "photos");
 }
@@ -1803,6 +2099,30 @@ export function getDriveFolderMetaByPath(userId: string, folderPath: string) {
   }>;
 
   return row
+    .map((entry) => ({
+      id: entry.id,
+      sourceAccountId: entry.source_account_id,
+      meta: parseMetaJson(entry.meta_json),
+    }))
+    .find((entry) => entry.meta?.fullPath === folderPath) ?? null;
+}
+
+export async function getDriveFolderMetaByPathAsync(userId: string, folderPath: string) {
+  const rows = await dbAll<{
+    id: string;
+    source_account_id: string | null;
+    meta_json: string | null;
+  }>(
+    `
+      SELECT id, source_account_id, meta_json
+      FROM vault_items
+      WHERE user_id = ? AND section = 'drive' AND item_kind = 'folder'
+      ORDER BY occurred_at DESC
+    `,
+    [userId],
+  );
+
+  return rows
     .map((entry) => ({
       id: entry.id,
       sourceAccountId: entry.source_account_id,
@@ -1851,6 +2171,44 @@ export function replaceDriveFolderSnapshot(
   }
 }
 
+export async function replaceDriveFolderSnapshotAsync(
+  userId: string,
+  accountId: string,
+  folders: Array<{
+    name: string;
+    folderPath: string;
+    fullPath: string;
+    fileId: string;
+    updatedAt: string;
+  }>,
+) {
+  await deleteFolderSnapshotAsync(userId, accountId);
+
+  for (const folder of folders) {
+    await dbRun(
+      `
+        INSERT INTO vault_items
+        (id, user_id, section, title, subtitle, bytes, item_kind, source, source_account_id, occurred_at, unread, meta_json)
+        VALUES (?, ?, 'drive', ?, ?, 0, 'folder', 'google-drive', ?, ?, 0, ?)
+      `,
+      [
+        randomUUID(),
+        userId,
+        folder.name,
+        "folder",
+        accountId,
+        folder.updatedAt,
+        JSON.stringify({
+          fileId: folder.fileId,
+          folderPath: folder.folderPath,
+          fullPath: folder.fullPath,
+          mimeType: "application/vnd.google-apps.folder",
+        }),
+      ],
+    );
+  }
+}
+
 export function replaceMailSnapshot(
   userId: string,
   accountId: string,
@@ -1891,6 +2249,49 @@ export function replaceMailSnapshot(
         snippet: message.snippet ?? "",
         messageId: message.messageId ?? null,
       }),
+    );
+  }
+}
+
+export async function replaceMailSnapshotAsync(
+  userId: string,
+  accountId: string,
+  messages: Array<{
+    subject: string;
+    from: string;
+    size: number;
+    receivedAt: string;
+    unread: boolean;
+    snippet?: string;
+    messageId?: string;
+  }>,
+) {
+  await dbRun(
+    "DELETE FROM vault_items WHERE user_id = ? AND section = 'mail' AND source = 'gmail' AND source_account_id = ?",
+    [userId, accountId],
+  );
+
+  for (const message of messages) {
+    await dbRun(
+      `
+        INSERT INTO vault_items
+        (id, user_id, section, title, subtitle, bytes, item_kind, source, source_account_id, occurred_at, unread, meta_json)
+        VALUES (?, ?, 'mail', ?, ?, ?, 'mail', 'gmail', ?, ?, ?, ?)
+      `,
+      [
+        randomUUID(),
+        userId,
+        message.subject,
+        message.from,
+        message.size,
+        accountId,
+        message.receivedAt,
+        message.unread ? 1 : 0,
+        JSON.stringify({
+          snippet: message.snippet ?? "",
+          messageId: message.messageId ?? null,
+        }),
+      ],
     );
   }
 }
@@ -1940,6 +2341,34 @@ export function createSyncRunDetailed(input: {
     input.message,
     now,
     now,
+  );
+}
+
+export async function createSyncRunDetailedAsync(input: {
+  userId: string;
+  provider: string;
+  status: string;
+  message: string;
+  accountId?: string | null;
+  itemCount?: number;
+}) {
+  const now = new Date().toISOString();
+  await dbRun(
+    `
+      INSERT INTO sync_runs (id, user_id, provider, account_id, status, item_count, message, started_at, finished_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+    [
+      randomUUID(),
+      input.userId,
+      input.provider,
+      input.accountId ?? null,
+      input.status,
+      input.itemCount ?? 0,
+      input.message,
+      now,
+      now,
+    ],
   );
 }
 

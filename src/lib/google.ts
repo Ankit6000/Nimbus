@@ -9,16 +9,16 @@ import {
 import {
   createVaultAudioNoteRecord,
   getVaultItemById,
-  getDriveFolderMetaByPath,
-  createSyncRunDetailed,
-  getHiddenGoogleAccountAssignment,
-  getGoogleUploadTargetForPath,
-  getSourceGoogleAccountById,
-  listGoogleAccountsForUser,
-  replaceDriveFolderSnapshot,
-  replaceMailSnapshot,
-  upsertDriveSnapshot,
-  upsertHiddenGoogleAccountCredential,
+  getDriveFolderMetaByPathAsync,
+  createSyncRunDetailedAsync,
+  getHiddenGoogleAccountAssignmentAsync,
+  getGoogleUploadTargetForPathAsync,
+  getSourceGoogleAccountByIdAsync,
+  listGoogleAccountsForUserAsync,
+  replaceDriveFolderSnapshotAsync,
+  replaceMailSnapshotAsync,
+  upsertDriveSnapshotAsync,
+  upsertHiddenGoogleAccountCredentialAsync,
   upsertVaultNote,
 } from "@/lib/repository";
 
@@ -87,7 +87,7 @@ function extensionForMimeType(mimeType: string) {
 
 async function getWritableGoogleTarget(userId: string, preferredAccountId?: string | null) {
   if (preferredAccountId) {
-    const preferred = getSourceGoogleAccountById(preferredAccountId);
+    const preferred = await getSourceGoogleAccountByIdAsync(preferredAccountId);
     if (preferred?.refresh_token) {
       return {
         ...preferred,
@@ -96,7 +96,7 @@ async function getWritableGoogleTarget(userId: string, preferredAccountId?: stri
     }
   }
 
-  const target = getGoogleUploadTargetForPath(userId, "");
+  const target = await getGoogleUploadTargetForPathAsync(userId, "");
   if (!target?.refresh_token) {
     throw new Error("No connected hidden Google accounts are ready yet.");
   }
@@ -210,7 +210,7 @@ export async function exchangeGoogleCode(code: string, state: string) {
   const refreshToken = tokens.refresh_token;
   const idPayload =
     typeof tokens.id_token === "string" ? decodeJwtPayload(tokens.id_token) : null;
-  const assignment = getHiddenGoogleAccountAssignment(parsedState.userId, parsedState.label);
+  const assignment = await getHiddenGoogleAccountAssignmentAsync(parsedState.userId, parsedState.label);
 
   if (!refreshToken) {
     throw new Error("Google did not return a refresh token. Reconnect with prompt=consent.");
@@ -237,7 +237,7 @@ export async function exchangeGoogleCode(code: string, state: string) {
     );
   }
 
-  upsertHiddenGoogleAccountCredential({
+  await upsertHiddenGoogleAccountCredentialAsync({
     userId: parsedState.userId,
     label: parsedState.label,
     googleEmail: connectedEmail,
@@ -249,11 +249,11 @@ export async function exchangeGoogleCode(code: string, state: string) {
 }
 
 export async function syncAssignedGoogleAccountsForUser(userId: string) {
-  const accounts = listGoogleAccountsForUser(userId);
+  const accounts = await listGoogleAccountsForUserAsync(userId);
   const config = getGoogleConfig();
 
   if (!config) {
-    createSyncRunDetailed({
+    await createSyncRunDetailedAsync({
       userId,
       provider: "google",
       status: "skipped",
@@ -335,7 +335,7 @@ export async function syncAssignedGoogleAccountsForUser(userId: string) {
         })
         .filter((folder) => !isInternalVaultPath(folder.fullPath));
 
-      upsertDriveSnapshot(
+      await upsertDriveSnapshotAsync(
         account.id,
         Number(storageQuota?.limit ?? 0),
         Number(storageQuota?.usage ?? 0),
@@ -373,7 +373,7 @@ export async function syncAssignedGoogleAccountsForUser(userId: string) {
             };
           }),
       );
-      replaceDriveFolderSnapshot(userId, account.id, folderRecords);
+      await replaceDriveFolderSnapshotAsync(userId, account.id, folderRecords);
 
       const messages = listResponse.data.messages ?? [];
       const details = await Promise.all(
@@ -405,10 +405,10 @@ export async function syncAssignedGoogleAccountsForUser(userId: string) {
         }),
       );
 
-      replaceMailSnapshot(userId, account.id, details);
+      await replaceMailSnapshotAsync(userId, account.id, details);
       const totalImported = files.length + details.length;
 
-      createSyncRunDetailed({
+      await createSyncRunDetailedAsync({
         userId,
         provider: "google",
         accountId: account.id,
@@ -419,7 +419,7 @@ export async function syncAssignedGoogleAccountsForUser(userId: string) {
       synced += 1;
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown sync failure.";
-      createSyncRunDetailed({
+      await createSyncRunDetailedAsync({
         userId,
         provider: "google",
         accountId: account.id,
@@ -468,7 +468,7 @@ async function ensureGoogleFolderPath(userId: string, accountId: string, request
 
   for (const segment of segments) {
     currentPath = currentPath ? `${currentPath}/${segment}` : segment;
-    const existing = getDriveFolderMetaByPath(userId, currentPath);
+    const existing = await getDriveFolderMetaByPathAsync(userId, currentPath);
 
     if (existing?.meta?.fileId && existing.sourceAccountId === accountId) {
       parentId = String(existing.meta.fileId);
@@ -495,7 +495,7 @@ export async function uploadFilesToConnectedGoogleDrive(
   files: File[],
   folderPath = "",
 ) {
-  const target = getGoogleUploadTargetForPath(userId, folderPath);
+  const target = await getGoogleUploadTargetForPathAsync(userId, folderPath);
 
   if (!target?.refresh_token) {
     throw new Error("No connected hidden Google accounts are ready for Drive uploads yet.");
@@ -538,7 +538,7 @@ export async function uploadFilesToConnectedGoogleDrive(
 }
 
 export async function createGoogleDriveFolder(userId: string, folderName: string, parentFolderPath = "") {
-  const target = getGoogleUploadTargetForPath(userId, parentFolderPath);
+  const target = await getGoogleUploadTargetForPathAsync(userId, parentFolderPath);
 
   if (!target?.refresh_token) {
     throw new Error("No connected hidden Google accounts are ready for folder creation yet.");
@@ -684,7 +684,7 @@ export async function saveVaultAudioNoteToGoogleDrive(input: {
 }
 
 export async function loadGoogleDriveFile(accountId: string, fileId: string) {
-  const account = getSourceGoogleAccountById(accountId);
+  const account = await getSourceGoogleAccountByIdAsync(accountId);
 
   if (!account?.refresh_token) {
     throw new Error("Connected Google account not found for this file.");
@@ -727,7 +727,7 @@ export async function loadGoogleDriveFile(accountId: string, fileId: string) {
 }
 
 export async function deleteGoogleDriveFile(accountId: string, fileId: string) {
-  const account = getSourceGoogleAccountById(accountId);
+  const account = await getSourceGoogleAccountByIdAsync(accountId);
 
   if (!account?.refresh_token) {
     throw new Error("Connected Google account not found for this file.");
@@ -775,7 +775,7 @@ function extractMessageBody(payload: Record<string, unknown> | null | undefined)
 }
 
 export async function loadFullGmailMessage(accountId: string, messageId: string) {
-  const account = getSourceGoogleAccountById(accountId);
+  const account = await getSourceGoogleAccountByIdAsync(accountId);
 
   if (!account?.refresh_token) {
     throw new Error("Connected Gmail account not found for this message.");
