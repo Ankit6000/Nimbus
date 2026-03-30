@@ -186,7 +186,9 @@ function runPostgresSyncCommand<T>(payload: Record<string, unknown>) {
       let result;
       if (payload.kind === "exec") {
         if (httpSql) {
-          result = await httpSql.query(payload.query);
+          for (const statement of payload.query.split(";").map((entry) => entry.trim()).filter(Boolean)) {
+            result = await httpSql.query(statement);
+          }
         } else {
           result = await sql.unsafe(payload.query);
         }
@@ -354,6 +356,13 @@ function normalizePgQuery(query: string) {
   return query.includes("?") ? toPgPlaceholders(query) : query;
 }
 
+function splitSqlStatements(query: string) {
+  return query
+    .split(";")
+    .map((statement) => statement.trim())
+    .filter(Boolean);
+}
+
 function getNeonClient() {
   const globalWithDb = globalThis as GlobalWithDb;
 
@@ -387,7 +396,9 @@ async function runPgQuery<T>(query: string, params: unknown[] = []) {
 async function runPgExec(query: string) {
   if (isNeonConnectionString()) {
     const client = getNeonClient();
-    await client.query(query);
+    for (const statement of splitSqlStatements(query)) {
+      await client.query(statement);
+    }
     return;
   }
 
