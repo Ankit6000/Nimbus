@@ -1,65 +1,69 @@
-import Image from "next/image";
+import { redirect } from "next/navigation";
+import { loginAction } from "@/app/actions";
+import { LoginCard } from "@/components/login-card";
+import { getCurrentUser } from "@/lib/auth";
 
-export default function Home() {
+type HomePageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function HomePage({ searchParams }: HomePageProps) {
+  const user = await getCurrentUser();
+
+  if (user) {
+    redirect("/dashboard");
+  }
+
+  const params = searchParams ? await searchParams : undefined;
+  const error = typeof params?.error === "string" ? params.error : undefined;
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto grid min-h-[calc(100vh-3rem)] max-w-7xl items-center gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+        <section className="glass-panel relative overflow-hidden rounded-[40px] px-7 py-10 sm:px-10 sm:py-12">
+          <div className="absolute -left-16 top-24 h-48 w-48 rounded-full bg-[#efc7b4]/70 blur-3xl" />
+          <div className="absolute bottom-10 right-8 h-40 w-40 rounded-full bg-[#b89132]/20 blur-3xl" />
+
+          <p className="text-xs font-semibold uppercase tracking-[0.42em] text-[#8b6d52]">
+            Private Cloud Control
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+          <h2 className="font-heading mt-5 max-w-3xl text-5xl font-semibold tracking-tight text-[#241b14] sm:text-6xl">
+            Build one hidden vault over many assigned storage accounts.
+          </h2>
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-[#5b4635]">
+            This MVP keeps the user experience clean: one credential, one dashboard, one combined
+            quota, while your assigned channels stay invisible in the backend.
+          </p>
+
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
+            <div className="rounded-[28px] border border-[#ead9c8] bg-[#fffaf2] p-5">
+              <p className="text-xs uppercase tracking-[0.24em] text-[#8b6d52]">Dashboard</p>
+              <p className="mt-3 text-2xl font-semibold text-[#241b14]">Unified storage</p>
+              <p className="mt-2 text-sm leading-6 text-[#5b4635]">
+                Total used and free space across assigned Google-backed pools.
+              </p>
+            </div>
+            <div className="rounded-[28px] border border-[#ead9c8] bg-[#fffaf2] p-5">
+              <p className="text-xs uppercase tracking-[0.24em] text-[#8b6d52]">Sections</p>
+              <p className="mt-3 text-2xl font-semibold text-[#241b14]">Vault modules</p>
+              <p className="mt-2 text-sm leading-6 text-[#5b4635]">
+                Photos, drive, passwords, notes, messages, and mail views.
+              </p>
+            </div>
+            <div className="rounded-[28px] border border-[#ead9c8] bg-[#fffaf2] p-5">
+              <p className="text-xs uppercase tracking-[0.24em] text-[#8b6d52]">Sync</p>
+              <p className="mt-3 text-2xl font-semibold text-[#241b14]">iCloud hook</p>
+              <p className="mt-2 text-sm leading-6 text-[#5b4635]">
+                Ready for a future importer flow, with a button already placed on the dashboard.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <form action={loginAction}>
+          <LoginCard error={error} />
+        </form>
+      </div>
     </div>
   );
 }

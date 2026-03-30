@@ -1,0 +1,126 @@
+import Link from "next/link";
+import { ReactNode } from "react";
+import { logoutAction } from "@/app/actions";
+import { PortalUser, SectionKey, sectionMeta } from "@/lib/data";
+
+const mainSectionOrder: SectionKey[] = [
+  "photos",
+  "videos",
+  "drive",
+  "notes",
+];
+
+const otherSectionOrder: SectionKey[] = [
+  "passwords",
+  "messages",
+  "mail",
+];
+
+type PortalShellProps = {
+  user: PortalUser;
+  currentPath: string;
+  children: ReactNode;
+};
+
+export function PortalShell({ user, currentPath, children }: PortalShellProps) {
+  return (
+    <div className="h-screen overflow-hidden bg-transparent px-4 py-4 sm:px-6 lg:px-8">
+      <div className="mx-auto grid h-[calc(100vh-2rem)] max-w-[1500px] gap-4 lg:grid-cols-[248px_minmax(0,1fr)]">
+        <aside className="glass-panel flex h-full flex-col rounded-[28px] p-4">
+          <div className="rounded-[24px] bg-[#1f1712] p-4 text-[#f8efe5]">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f4d7c7] text-base font-semibold text-[#76321a]">
+                {user.avatar}
+              </div>
+              <div>
+                <p className="font-heading text-xl font-semibold leading-tight">{user.fullName}</p>
+                <p className="text-xs text-[#d2bba8]">@{user.username}</p>
+              </div>
+            </div>
+            <p className="mt-4 rounded-2xl bg-[#2b2018] px-3 py-2 text-xs text-[#e3d5c8]">
+              {user.roleLabel}
+            </p>
+          </div>
+
+          <div className="mt-4 rounded-[24px] bg-[#fffaf2] p-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#8b6d52]">
+              Navigation
+            </p>
+            <nav className="mt-3 grid gap-1.5">
+              <Link
+                href="/dashboard"
+                className={`rounded-2xl px-3 py-2.5 text-sm font-medium transition ${
+                  currentPath === "/dashboard"
+                    ? "bg-[#241b14] text-[#fff6ed]"
+                    : "bg-[#f5ecdf] text-[#3b2d20] hover:bg-[#ecdcc8]"
+                }`}
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/activity"
+                className={`rounded-2xl px-3 py-2.5 text-sm font-medium transition ${
+                  currentPath === "/activity"
+                    ? "bg-[#241b14] text-[#fff6ed]"
+                    : "bg-[#f5ecdf] text-[#3b2d20] hover:bg-[#ecdcc8]"
+                }`}
+              >
+                Recent Activity
+              </Link>
+              {mainSectionOrder.map((key) => {
+                const href = `/vault/${key}`;
+                const active = currentPath === href || currentPath.startsWith(`${href}/`);
+
+                return (
+                  <Link
+                    key={key}
+                    href={href}
+                    className={`rounded-2xl px-3 py-2.5 text-sm font-medium transition ${
+                      active
+                        ? "bg-[#241b14] text-[#fff6ed]"
+                        : "bg-[#f5ecdf] text-[#3b2d20] hover:bg-[#ecdcc8]"
+                    }`}
+                  >
+                    {sectionMeta[key].title}
+                  </Link>
+                );
+              })}
+              <p className="mt-3 px-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8b6d52]">
+                Others
+              </p>
+              {otherSectionOrder.map((key) => {
+                const href = `/vault/${key}`;
+                const active = currentPath === href || currentPath.startsWith(`${href}/`);
+
+                return (
+                  <Link
+                    key={key}
+                    href={href}
+                    className={`rounded-2xl px-3 py-2.5 text-sm font-medium transition ${
+                      active
+                        ? "bg-[#241b14] text-[#fff6ed]"
+                        : "bg-[#f5ecdf] text-[#3b2d20] hover:bg-[#ecdcc8]"
+                    }`}
+                  >
+                    {sectionMeta[key].title}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+
+          <form action={logoutAction} className="mt-auto pt-4">
+            <button
+              type="submit"
+              className="w-full rounded-full border border-[#d8c0ae] bg-[#fffaf2] px-4 py-2.5 text-sm font-semibold text-[#3b2d20] transition hover:bg-[#f5ecdf]"
+            >
+              Log Out
+            </button>
+          </form>
+        </aside>
+
+        <main className="glass-panel h-full overflow-y-auto rounded-[32px] p-4 sm:p-6 lg:p-8">{children}</main>
+      </div>
+    </div>
+  );
+}

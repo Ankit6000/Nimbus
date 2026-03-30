@@ -1,36 +1,74 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Nimbus Vault
 
-## Getting Started
+Private portal for admin-managed members who should see a single vault while the assigned Google accounts stay hidden in the backend.
 
-First, run the development server:
+## What is implemented
+
+- Next.js App Router frontend
+- Cookie-based member login
+- Persistent SQLite database stored at `data/vault.db`
+- Seeded demo member and hidden Google account assignments
+- Aggregated dashboard totals across assigned accounts
+- Section pages for photos, drive, passwords, notes, messages, and mail
+- Google sync service for Drive and Gmail, ready to run when OAuth credentials and refresh tokens are added
+- iCloud sync request placeholder that records sync intent in the database
+
+## Demo login
+
+- Username: `amber`
+- Email: `amber@nimbus.local`
+- Password: `vault123`
+
+## Run locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Database
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The app automatically creates and seeds a SQLite database on first server start:
 
-## Learn More
+- Database file: `data/vault.db`
+- Tables:
+  - `users`
+  - `hidden_google_accounts`
+  - `icloud_connections`
+  - `vault_items`
+  - `sync_runs`
 
-To learn more about Next.js, take a look at the following resources:
+If you want a fresh local database, delete `data/vault.db` and restart the app.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Google integration setup
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Create `.env.local` from `.env.example` and fill in:
 
-## Deploy on Vercel
+```bash
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REDIRECT_URI=
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The sync service expects hidden Google accounts in the database to have refresh tokens with at least:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `https://www.googleapis.com/auth/drive.metadata.readonly`
+- `https://www.googleapis.com/auth/gmail.readonly`
+
+Right now the seeded hidden accounts are placeholders, so the dashboard can render real aggregated data even before live Google credentials are attached.
+
+To attach a hidden Google account to a member, use the admin-facing connect route after filling `.env.local`:
+
+```text
+/api/google/connect?userId=<member-user-id>&label=<internal-label>&emailHint=<google-email>
+```
+
+After consent, the callback stores the refresh token in the local database while keeping the account invisible in the member UI.
+
+## Build
+
+```bash
+npm run build
+```
