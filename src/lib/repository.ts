@@ -1044,7 +1044,7 @@ export function listDriveFoldersAtPath(userId: string, folderPath: string) {
         SELECT id, source_account_id, meta_json
         FROM vault_items
         WHERE user_id = ? AND section = 'drive' AND item_kind = 'folder'
-        ORDER BY title COLLATE NOCASE ASC
+        ORDER BY lower(title) ASC, title ASC
       `,
     )
     .all(userId) as Array<{
@@ -1081,7 +1081,7 @@ export async function listDriveFoldersAtPathAsync(userId: string, folderPath: st
       SELECT id, source_account_id, meta_json
       FROM vault_items
       WHERE user_id = ? AND section = 'drive' AND item_kind = 'folder'
-      ORDER BY title COLLATE NOCASE ASC
+      ORDER BY lower(title) ASC, title ASC
     `,
     [userId],
   );
