@@ -14,13 +14,13 @@ import {
   createAuditLogAsync,
   createAppleAccountLink,
   authenticateUser,
-  createHiddenAccountAssignment,
+  createHiddenAccountAssignmentAsync,
   createManagedMember,
   createSyncRunAsync,
   deleteVaultItemAndRelated,
   getVaultItemByIdAsync,
-  disconnectHiddenGoogleAccount,
-  deleteHiddenAccountAssignment,
+  disconnectHiddenGoogleAccountAsync,
+  deleteHiddenAccountAssignmentAsync,
   deleteManagedMember,
   importVaultFiles,
   listManagedMembers,
@@ -28,7 +28,7 @@ import {
   resetOwnPassword,
   resetManagedMemberPassword,
   upsertVaultPassword,
-  updateHiddenAccountAssignment,
+  updateHiddenAccountAssignmentAsync,
   updateManagedMember,
 } from "@/lib/repository";
 
@@ -129,13 +129,13 @@ export async function addHiddenAccountAction(formData: FormData) {
     redirect("/admin/dashboard?admin=account-invalid");
   }
 
-  createHiddenAccountAssignment({
+  await createHiddenAccountAssignmentAsync({
     userId,
     label,
     googleEmail,
     accountPassword,
   });
-  createAuditLog({
+  await createAuditLogAsync({
     actorUserId: admin.id,
     targetUserId: userId,
     action: "google-account.create",
@@ -226,8 +226,8 @@ export async function updateHiddenAccountAction(formData: FormData) {
     redirect("/admin/dashboard?admin=account-invalid");
   }
 
-  updateHiddenAccountAssignment({ id, label, googleEmail, accountPassword });
-  createAuditLog({
+  await updateHiddenAccountAssignmentAsync({ id, label, googleEmail, accountPassword });
+  await createAuditLogAsync({
     actorUserId: admin.id,
     action: "google-account.update",
     details: `Updated hidden Google account ${googleEmail}.`,
@@ -242,8 +242,8 @@ export async function deleteHiddenAccountAction(formData: FormData) {
     redirect("/admin/dashboard?admin=account-invalid");
   }
 
-  deleteHiddenAccountAssignment(id);
-  createAuditLog({
+  await deleteHiddenAccountAssignmentAsync(id);
+  await createAuditLogAsync({
     actorUserId: admin.id,
     action: "google-account.delete",
     details: `Deleted hidden Google account ${id}.`,
@@ -259,8 +259,8 @@ export async function disconnectGoogleAccountAction(formData: FormData) {
     redirect("/admin/google?google=missing-params");
   }
 
-  disconnectHiddenGoogleAccount(id);
-  createAuditLog({
+  await disconnectHiddenGoogleAccountAsync(id);
+  await createAuditLogAsync({
     actorUserId: admin.id,
     action: "google-account.disconnect",
     details: `Disconnected hidden Google account ${id}.`,

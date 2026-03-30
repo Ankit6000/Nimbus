@@ -1637,6 +1637,25 @@ export function createHiddenAccountAssignment(input: {
   );
 }
 
+export async function createHiddenAccountAssignmentAsync(input: {
+  userId: string;
+  label: string;
+  googleEmail: string;
+  accountPassword?: string;
+}) {
+  const passwordPayload = input.accountPassword?.trim()
+    ? JSON.stringify(encryptVaultSecret(input.accountPassword.trim()))
+    : null;
+  await dbRun(
+    `
+      INSERT INTO hidden_google_accounts
+      (id, user_id, account_label, google_email, login_password_json, refresh_token, scopes, total_bytes, used_bytes, kind, status, last_synced_at, created_at)
+      VALUES (?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, 'seeded', NULL, ?)
+    `,
+    [randomUUID(), input.userId, input.label, input.googleEmail, passwordPayload, 0, 0, "google", new Date().toISOString()],
+  );
+}
+
 export function updateManagedMember(input: {
   userId: string;
   username: string;
@@ -1678,9 +1697,32 @@ export function updateHiddenAccountAssignment(input: {
   ).run(input.label, input.googleEmail, passwordPayload, input.id);
 }
 
+export async function updateHiddenAccountAssignmentAsync(input: {
+  id: string;
+  label: string;
+  googleEmail: string;
+  accountPassword?: string;
+}) {
+  const passwordPayload = input.accountPassword?.trim()
+    ? JSON.stringify(encryptVaultSecret(input.accountPassword.trim()))
+    : null;
+  await dbRun(
+    `
+      UPDATE hidden_google_accounts
+      SET account_label = ?, google_email = ?, login_password_json = ?, kind = 'google'
+      WHERE id = ?
+    `,
+    [input.label, input.googleEmail, passwordPayload, input.id],
+  );
+}
+
 export function deleteHiddenAccountAssignment(id: string) {
   const db = getDb();
   db.prepare("DELETE FROM hidden_google_accounts WHERE id = ?").run(id);
+}
+
+export async function deleteHiddenAccountAssignmentAsync(id: string) {
+  await dbRun("DELETE FROM hidden_google_accounts WHERE id = ?", [id]);
 }
 
 export function disconnectHiddenGoogleAccount(id: string) {
@@ -1699,6 +1741,25 @@ export function disconnectHiddenGoogleAccount(id: string) {
       WHERE source_account_id = ? AND source IN ('google-drive', 'gmail')
     `,
   ).run(id);
+}
+
+export async function disconnectHiddenGoogleAccountAsync(id: string) {
+  await dbRun(
+    `
+      UPDATE hidden_google_accounts
+      SET refresh_token = NULL, scopes = NULL, status = 'disconnected'
+      WHERE id = ?
+    `,
+    [id],
+  );
+
+  await dbRun(
+    `
+      DELETE FROM vault_items
+      WHERE source_account_id = ? AND source IN ('google-drive', 'gmail')
+    `,
+    [id],
+  );
 }
 
 export async function resetManagedMemberPassword(userId: string, password: string) {
