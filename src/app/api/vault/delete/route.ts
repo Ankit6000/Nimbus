@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { deleteGoogleDriveFile, syncAssignedGoogleAccountsForUser } from "@/lib/google";
 import { deleteVaultItemAndRelated, getVaultItemById } from "@/lib/repository";
 
-const SESSION_COOKIE = "nimbus-session";
+const SESSION_COOKIE = process.env.NODE_ENV === "production" ? "__Host-nimbus-session" : "nimbus-session";
 
 export async function POST(request: Request) {
   const store = await cookies();

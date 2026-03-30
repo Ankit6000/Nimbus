@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ReactNode } from "react";
 import { logoutAction } from "@/app/actions";
 import { PortalUser, SectionKey, sectionMeta } from "@/lib/data";
+import { DatabaseRuntimeStatus } from "@/lib/db";
 
 const mainSectionOrder: SectionKey[] = [
   "photos",
@@ -19,10 +20,11 @@ const otherSectionOrder: SectionKey[] = [
 type PortalShellProps = {
   user: PortalUser;
   currentPath: string;
+  databaseStatus: DatabaseRuntimeStatus;
   children: ReactNode;
 };
 
-export function PortalShell({ user, currentPath, children }: PortalShellProps) {
+export function PortalShell({ user, currentPath, databaseStatus, children }: PortalShellProps) {
   return (
     <div className="h-screen overflow-hidden bg-transparent px-4 py-4 sm:px-6 lg:px-8">
       <div className="mx-auto grid h-[calc(100vh-2rem)] max-w-[1500px] gap-4 lg:grid-cols-[248px_minmax(0,1fr)]">
@@ -40,6 +42,18 @@ export function PortalShell({ user, currentPath, children }: PortalShellProps) {
             <p className="mt-4 rounded-2xl bg-[#2b2018] px-3 py-2 text-xs text-[#e3d5c8]">
               {user.roleLabel}
             </p>
+            <div className="mt-3 flex items-center justify-between rounded-2xl border border-[#4a3629] bg-[#241a14] px-3 py-2 text-[11px] uppercase tracking-[0.16em] text-[#d8c4b0]">
+              <span>Data</span>
+              <span
+                className={`rounded-full px-2 py-1 text-[10px] font-semibold tracking-[0.18em] ${
+                  databaseStatus.tone === "stable"
+                    ? "bg-[#203a30] text-[#d8f3e8]"
+                    : "bg-[#4a2f18] text-[#ffe3bf]"
+                }`}
+              >
+                {databaseStatus.label}
+              </span>
+            </div>
           </div>
 
           <div className="mt-4 rounded-[24px] bg-[#fffaf2] p-3">

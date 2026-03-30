@@ -2,14 +2,14 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getAdminById, getPortalUserById } from "@/lib/repository";
 
-const SESSION_COOKIE = "nimbus-session";
+const SESSION_COOKIE = process.env.NODE_ENV === "production" ? "__Host-nimbus-session" : "nimbus-session";
 
 export async function createSession(userId: string) {
   const store = await cookies();
   store.set(SESSION_COOKIE, userId, {
     httpOnly: true,
     sameSite: "lax",
-    secure: false,
+    secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 60 * 60 * 12,
   });

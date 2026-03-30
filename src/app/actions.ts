@@ -74,8 +74,17 @@ export async function requestIcloudSyncAction(formData: FormData) {
 export async function requestGoogleSyncAction(formData: FormData) {
   const userId = String(formData.get("userId") ?? "");
   const result = await syncAssignedGoogleAccountsForUser(userId);
-  const status = result.status === "success" ? "google-success" : "google-skipped";
-  redirect(`/dashboard?sync=${status}`);
+  const status =
+    result.status === "success"
+      ? "google-success"
+      : result.status === "error"
+        ? "google-error"
+        : "google-skipped";
+  const params = new URLSearchParams({ sync: status });
+  if (result.message) {
+    params.set("message", result.message);
+  }
+  redirect(`/dashboard?${params.toString()}`);
 }
 
 export async function createManagedMemberAction(formData: FormData) {

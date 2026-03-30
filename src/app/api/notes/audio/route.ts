@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { saveVaultAudioNoteToGoogleDrive } from "@/lib/google";
 
-const SESSION_COOKIE = "nimbus-session";
+const SESSION_COOKIE = process.env.NODE_ENV === "production" ? "__Host-nimbus-session" : "nimbus-session";
 
 export async function POST(request: Request) {
   const store = await cookies();

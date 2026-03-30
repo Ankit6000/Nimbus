@@ -1,25 +1,28 @@
 # Nimbus Vault
 
-Private portal for admin-managed members who should see a single vault while the assigned Google accounts stay hidden in the backend.
+Private vault portal with:
 
-## What is implemented
+- admin-managed member access
+- hidden storage/mailbox channels behind the scenes
+- vault sections for photos, videos, files, notes, passwords, messages, and mail
+- Google OAuth integration for hidden account connections
 
-- Next.js App Router frontend
-- Cookie-based member login
-- Persistent SQLite database stored at `data/vault.db`
-- Seeded demo member and hidden Google account assignments
-- Aggregated dashboard totals across assigned accounts
-- Section pages for photos, drive, passwords, notes, messages, and mail
-- Google sync service for Drive and Gmail, ready to run when OAuth credentials and refresh tokens are added
-- iCloud sync request placeholder that records sync intent in the database
+## Current deployment status
 
-## Demo login
+This repo is now:
 
-- Username: `amber`
-- Email: `amber@nimbus.local`
-- Password: `vault123`
+- GitHub-ready
+- preview-deploy-ready
+- production-hardened for cookies, legal pages, and object storage
 
-## Run locally
+What is still not fully production-complete:
+
+- the current Postgres support is now available through `DATABASE_URL`
+- the repository layer still uses a compatibility bridge instead of a fully optimized native async data layer
+
+So you can deploy this for preview/staging now, and the binary file storage path is ready for object storage in production.
+
+## Local development
 
 ```bash
 npm install
@@ -28,47 +31,137 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## Database
+## Local demo accounts
 
-The app automatically creates and seeds a SQLite database on first server start:
+By default, demo seed data is enabled outside production.
 
-- Database file: `data/vault.db`
-- Tables:
-  - `users`
-  - `hidden_google_accounts`
-  - `icloud_connections`
-  - `vault_items`
-  - `sync_runs`
+- Member: `amber / vault123`
+- Admin: `admin / admin123`
 
-If you want a fresh local database, delete `data/vault.db` and restart the app.
+To disable demo seeding, set:
 
-## Google integration setup
+```bash
+SEED_DEMO_DATA=false
+```
 
-Create `.env.local` from `.env.example` and fill in:
+## Environment variables
+
+Copy `.env.example` to `.env.local` and fill in what you need.
+
+Important groups:
+
+### App and public URLs
+
+```bash
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_SHOW_DEMO_CREDENTIALS=true
+```
+
+### Google OAuth
 
 ```bash
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
-GOOGLE_REDIRECT_URI=
+GOOGLE_REDIRECT_URI=http://localhost:3000/api/google/callback
 ```
 
-The sync service expects hidden Google accounts in the database to have refresh tokens with at least:
+### Admin bootstrap
 
-- `https://www.googleapis.com/auth/drive.metadata.readonly`
-- `https://www.googleapis.com/auth/gmail.readonly`
+These are used to ensure there is at least one admin account:
 
-Right now the seeded hidden accounts are placeholders, so the dashboard can render real aggregated data even before live Google credentials are attached.
-
-To attach a hidden Google account to a member, use the admin-facing connect route after filling `.env.local`:
-
-```text
-/api/google/connect?userId=<member-user-id>&label=<internal-label>&emailHint=<google-email>
+```bash
+ADMIN_BOOTSTRAP_USERNAME=admin
+ADMIN_BOOTSTRAP_EMAIL=admin@nimbus.local
+ADMIN_BOOTSTRAP_PASSWORD=admin123
+ADMIN_BOOTSTRAP_FULL_NAME=System Admin
+ADMIN_BOOTSTRAP_AVATAR=SA
+ADMIN_BOOTSTRAP_ROLE_LABEL=Administrator
 ```
 
-After consent, the callback stores the refresh token in the local database while keeping the account invisible in the member UI.
+### Object storage
+
+Nimbus Vault now supports S3-compatible object storage for uploaded binary files.
+If these are missing, it falls back to local storage in `data/uploads`.
+
+```bash
+OBJECT_STORAGE_REGION=
+OBJECT_STORAGE_BUCKET=
+OBJECT_STORAGE_ACCESS_KEY_ID=
+OBJECT_STORAGE_SECRET_ACCESS_KEY=
+OBJECT_STORAGE_ENDPOINT=
+OBJECT_STORAGE_FORCE_PATH_STYLE=false
+```
+
+This works well with:
+
+- AWS S3
+- Cloudflare R2
+- Backblaze B2 S3-compatible API
+- many Railway/Vercel-friendly S3-compatible providers
+
+## Production deployment checklist
+
+### 1. Preview deploy first
+
+Recommended:
+
+- Vercel for easiest Next.js previews
+- Railway for a more backend-oriented deployment path
+
+### 2. Set production URL
+
+Set:
+
+```bash
+NEXT_PUBLIC_APP_URL=https://your-domain.com
+GOOGLE_REDIRECT_URI=https://your-domain.com/api/google/callback
+```
+
+### 3. Configure database
+
+Set:
+
+```bash
+DATABASE_URL=postgres://...
+POSTGRES_SSL=true
+SEED_DEMO_DATA=false
+NEXT_PUBLIC_SHOW_DEMO_CREDENTIALS=false
+```
+
+Without `DATABASE_URL`, the app still falls back to local SQLite.
+
+### 4. Configure object storage
+
+Point the `OBJECT_STORAGE_*` variables at an S3-compatible bucket so uploaded/imported binaries are not stored on ephemeral local disk.
+
+### 5. Configure Google OAuth
+
+- enable the required Google APIs
+- set your production redirect URI
+- add privacy and terms URLs
+- move the OAuth app toward production/verification
+
+### 6. Optimize the Postgres layer further
+
+The app can now run against hosted Postgres, but the current bridge keeps the existing repository API intact rather than fully rewriting the data layer. That is enough to unblock deployment, and a deeper repository refactor can come later for scale/performance.
+
+## Legal/public pages
+
+The app now includes:
+
+- `/privacy`
+- `/terms`
+
+Replace the placeholder contact text on those pages before production launch.
 
 ## Build
 
 ```bash
 npm run build
 ```
+
+## Notes
+
+- Session cookies automatically become secure in production.
+- Demo credentials are hidden in production by default unless `NEXT_PUBLIC_SHOW_DEMO_CREDENTIALS=true`.
+- Local runtime files under `data/` are ignored by Git.

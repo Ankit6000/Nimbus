@@ -1,8 +1,14 @@
+import Link from "next/link";
+
 type LoginCardProps = {
   error?: string;
 };
 
 export function LoginCard({ error }: LoginCardProps) {
+  const showDemoCredentials =
+    process.env.NEXT_PUBLIC_SHOW_DEMO_CREDENTIALS === "true" ||
+    (process.env.NEXT_PUBLIC_SHOW_DEMO_CREDENTIALS == null && process.env.NODE_ENV !== "production");
+
   return (
     <section className="glass-panel relative overflow-hidden rounded-[32px] px-7 py-7 sm:px-9 sm:py-9">
       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#c55c32] via-[#b89132] to-[#436b5c]" />
@@ -82,7 +88,13 @@ export function LoginCard({ error }: LoginCardProps) {
 
         <div className="mt-6 flex items-center justify-between gap-4">
           <div className="text-sm text-[#c9ab93]">
-            Demo account: <span className="font-semibold text-[#fff6ed]">amber / vault123</span>
+            {showDemoCredentials ? (
+              <>
+                Demo account: <span className="font-semibold text-[#fff6ed]">amber / vault123</span>
+              </>
+            ) : (
+              "Use the credentials created by your administrator."
+            )}
           </div>
           <button
             type="submit"
@@ -90,6 +102,15 @@ export function LoginCard({ error }: LoginCardProps) {
           >
             Enter Vault
           </button>
+        </div>
+
+        <div className="mt-5 flex flex-wrap gap-4 text-sm text-[#c9ab93]">
+          <Link href="/privacy" className="transition hover:text-[#fff6ed]">
+            Privacy Policy
+          </Link>
+          <Link href="/terms" className="transition hover:text-[#fff6ed]">
+            Terms of Service
+          </Link>
         </div>
       </div>
     </section>

@@ -267,6 +267,8 @@ export async function syncAssignedGoogleAccountsForUser(userId: string) {
 
   let synced = 0;
   let skipped = 0;
+  let errored = 0;
+  const errorMessages: string[] = [];
 
   for (const account of accounts) {
     if (!account.refresh_token) {
@@ -424,21 +426,33 @@ export async function syncAssignedGoogleAccountsForUser(userId: string) {
         status: "error",
         message,
       });
+      errored += 1;
+      errorMessages.push(`${account.google_email}: ${message}`);
     }
   }
 
-  if (synced === 0) {
+  if (synced > 0) {
     return {
-      status: "skipped",
-      message: skipped > 0
-        ? "No hidden Google accounts have refresh tokens yet."
-        : "Nothing changed during sync.",
+      status: "success" as const,
+      message:
+        errored > 0
+          ? `Synced ${synced} connected account${synced === 1 ? "" : "s"}, but ${errored} account${errored === 1 ? "" : "s"} still had issues.`
+          : `Synced ${synced} hidden Google account${synced === 1 ? "" : "s"}.`,
+    };
+  }
+
+  if (errored > 0) {
+    return {
+      status: "error" as const,
+      message: errorMessages[0] ?? "Connected account sync failed.",
     };
   }
 
   return {
-    status: "success",
-    message: `Synced ${synced} hidden Google account${synced === 1 ? "" : "s"}.`,
+    status: "skipped" as const,
+    message: skipped > 0
+      ? "No hidden Google accounts have refresh tokens yet."
+      : "Nothing changed during sync.",
   };
 }
 

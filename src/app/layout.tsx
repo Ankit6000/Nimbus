@@ -13,9 +13,15 @@ const bodyFont = IBM_Plex_Sans({
   weight: ["400", "500", "600", "700"],
 });
 
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
 export const metadata: Metadata = {
   title: "Nimbus Vault",
-  description: "Private storage portal with admin-managed access.",
+  description: "Private vault portal with admin-managed access, uploads, and hidden storage channels.",
+  metadataBase: new URL(appUrl),
+  alternates: {
+    canonical: "/",
+  },
 };
 
 export default function RootLayout({

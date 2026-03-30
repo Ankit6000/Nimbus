@@ -1,6 +1,5 @@
 import bcrypt from "bcryptjs";
 import fs from "node:fs";
-import path from "node:path";
 import { createCipheriv, createDecipheriv, randomBytes, randomUUID, scryptSync } from "node:crypto";
 import { getDb } from "@/lib/db";
 import {
@@ -22,6 +21,7 @@ import {
   isSheetLikeFile,
   isVideoLikeFile,
 } from "@/lib/file-types";
+import { deleteBinaryFile, storeBinaryFile } from "@/lib/storage";
 
 type UserRow = {
   id: string;
@@ -748,6 +748,9 @@ export function deleteVaultItemAndRelated(userId: string, itemId: string) {
 
   for (const id of relatedIds) {
     const item = getVaultItemById(userId, id);
+    if (typeof item?.meta?.storedObjectKey === "string") {
+      void deleteBinaryFile(item.meta.storedObjectKey).catch(() => null);
+    }
     if (typeof item?.meta?.storedPath === "string" && fs.existsSync(item.meta.storedPath)) {
       fs.unlinkSync(item.meta.storedPath);
     }
@@ -1545,8 +1548,6 @@ export async function importVaultFiles(input: {
   files: File[];
 }) {
   const db = getDb();
-  const uploadRoot = path.join(process.cwd(), "data", "imports", input.userId, input.section);
-  fs.mkdirSync(uploadRoot, { recursive: true });
 
   const stmt = db.prepare(
     `
@@ -1562,9 +1563,12 @@ export async function importVaultFiles(input: {
     if (!file || file.size === 0) continue;
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const storedName = `${Date.now()}-${randomUUID()}-${file.name}`;
-    const storedPath = path.join(uploadRoot, storedName);
-    fs.writeFileSync(storedPath, buffer);
+    const storedFile = await storeBinaryFile({
+      scope: ["imports", input.userId, input.section],
+      fileName: file.name,
+      contentType: file.type || "application/octet-stream",
+      buffer,
+    });
 
     const mimeType = file.type || "";
     const isPhotoSection = input.section === "photos";
@@ -1594,7 +1598,12 @@ export async function importVaultFiles(input: {
       kind,
       input.source,
       new Date().toISOString(),
-      JSON.stringify({ storedPath, originalType: mimeType }),
+      JSON.stringify({
+        storedObjectKey: storedFile.objectKey,
+        storageProvider: storedFile.provider,
+        originalType: mimeType,
+        originalName: file.name,
+      }),
     );
     imported += 1;
   }

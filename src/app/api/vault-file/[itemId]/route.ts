@@ -3,8 +3,9 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { loadGoogleDriveFile } from "@/lib/google";
 import { getVaultItemById } from "@/lib/repository";
+import { readBinaryFile } from "@/lib/storage";
 
-const SESSION_COOKIE = "nimbus-session";
+const SESSION_COOKIE = process.env.NODE_ENV === "production" ? "__Host-nimbus-session" : "nimbus-session";
 
 type RouteContext = {
   params: Promise<{
@@ -28,6 +29,25 @@ export async function GET(_request: Request, { params }: RouteContext) {
   }
 
   const meta = item.meta ?? {};
+
+  if (typeof meta.storedObjectKey === "string") {
+    const mimeType =
+      typeof meta.originalType === "string" && meta.originalType
+        ? meta.originalType
+        : "application/octet-stream";
+    try {
+      const file = await readBinaryFile(meta.storedObjectKey);
+      return new NextResponse(file.buffer, {
+        headers: {
+          "Content-Type": mimeType || file.contentType,
+          "Content-Length": String(file.buffer.byteLength),
+          "Cache-Control": "private, max-age=60",
+        },
+      });
+    } catch {
+      return new NextResponse("Stored file is missing.", { status: 404 });
+    }
+  }
 
   if (typeof meta.storedPath === "string" && fs.existsSync(meta.storedPath)) {
     const mimeType =

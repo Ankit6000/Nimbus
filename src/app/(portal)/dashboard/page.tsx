@@ -31,12 +31,19 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const syncQueued = params?.sync === "queued";
   const googleSuccess = params?.sync === "google-success";
   const googleSkipped = params?.sync === "google-skipped";
+  const googleError = params?.sync === "google-error";
   const googleUploaded = params?.sync === "google-uploaded";
   const googleUploadInvalid = params?.sync === "google-upload-invalid";
   const googleUploadError = params?.sync === "google-upload-error";
   const passwordUpdated = params?.sync === "password-updated";
   const passwordInvalid = params?.sync === "password-invalid";
   const passwordError = params?.sync === "password-error";
+  const syncMessage =
+    typeof params?.message === "string"
+      ? params.message
+      : Array.isArray(params?.message)
+        ? params.message[0]
+        : "";
 
   return (
     <div className="grid gap-6">
@@ -175,13 +182,19 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
             {googleSuccess ? (
               <p className="mt-4 rounded-2xl border border-[#9bc5af] bg-[#e3f3ea] px-4 py-3 text-sm text-[#335443]">
-                Refresh completed. Fresh storage and mailbox data has been pulled into your vault.
+                {syncMessage || "Refresh completed. Fresh storage and mailbox data has been pulled into your vault."}
               </p>
             ) : null}
 
             {googleSkipped ? (
               <p className="mt-4 rounded-2xl border border-[#d4bf7f] bg-[#f7efd0] px-4 py-3 text-sm text-[#6c5821]">
-                Refresh was skipped because the assigned storage channels are not fully connected yet.
+                {syncMessage || "Refresh was skipped because the assigned storage channels are not fully connected yet."}
+              </p>
+            ) : null}
+
+            {googleError ? (
+              <p className="mt-4 rounded-2xl border border-[#d89a8d] bg-[#f7e1dc] px-4 py-3 text-sm text-[#7b3d31]">
+                {syncMessage || "Refresh failed while talking to one of the connected accounts."}
               </p>
             ) : null}
 
