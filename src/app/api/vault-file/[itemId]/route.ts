@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { loadGoogleDriveFile } from "@/lib/google";
-import { getVaultItemById } from "@/lib/repository";
+import { getVaultItemByIdAsync } from "@/lib/repository";
 import { readBinaryFile } from "@/lib/storage";
 
 const SESSION_COOKIE = process.env.NODE_ENV === "production" ? "__Host-nimbus-session" : "nimbus-session";
@@ -22,7 +22,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
-  const item = getVaultItemById(userId, itemId);
+  const item = await getVaultItemByIdAsync(userId, itemId);
 
   if (!item) {
     return new NextResponse("Not found", { status: 404 });

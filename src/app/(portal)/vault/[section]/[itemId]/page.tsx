@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { SectionKey, sectionMeta } from "@/lib/data";
 import { formatBytes, formatDateTime } from "@/lib/format";
-import { getVaultItemById } from "@/lib/repository";
+import { getVaultItemByIdAsync } from "@/lib/repository";
 
 const validSections: SectionKey[] = [
   "photos",
@@ -31,7 +31,7 @@ export default async function VaultItemPage({ params }: VaultItemPageProps) {
     notFound();
   }
 
-  const item = getVaultItemById(user.id, itemId);
+  const item = await getVaultItemByIdAsync(user.id, itemId);
 
   if (!item || item.section !== section) {
     notFound();

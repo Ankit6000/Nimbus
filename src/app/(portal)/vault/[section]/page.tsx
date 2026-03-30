@@ -8,7 +8,7 @@ import { requireUser } from "@/lib/auth";
 import { SectionKey, sectionMeta } from "@/lib/data";
 import { PHOTO_ACCEPT, VIDEO_ACCEPT } from "@/lib/file-types";
 import { formatBytes, formatDateTime } from "@/lib/format";
-import { listVaultItemsBySection } from "@/lib/repository";
+import { listVaultItemsBySectionAsync } from "@/lib/repository";
 import { buildUserStats } from "@/lib/stats";
 
 const validSections: SectionKey[] = [
@@ -38,7 +38,7 @@ export default async function VaultSectionPage({ params }: VaultSectionPageProps
   const key = section as SectionKey;
   const meta = sectionMeta[key];
   const stats = buildUserStats(user).bySection[key];
-  const items = listVaultItemsBySection(user.id, key);
+  const items = await listVaultItemsBySectionAsync(user.id, key);
 
   return (
     <div className="grid gap-6">

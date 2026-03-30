@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import fs from "node:fs";
 import { createCipheriv, createDecipheriv, randomBytes, randomUUID, scryptSync } from "node:crypto";
-import { getDb } from "@/lib/db";
+import { dbAll, dbGet, dbRun, getDb } from "@/lib/db";
 import {
   AdminManagedMember,
   AdminAuditEntry,
@@ -161,17 +161,15 @@ function mapVaultItemRow(row: ItemRow): VaultItemRecord {
 }
 
 export async function authenticateUser(identifier: string, password: string) {
-  const db = getDb();
-  const user = db
-    .prepare(
-      `
-        SELECT *
-        FROM users
-        WHERE lower(username) = lower(?) OR lower(email) = lower(?)
-        LIMIT 1
-      `,
-    )
-    .get(identifier, identifier) as UserRow | undefined;
+  const user = (await dbGet<UserRow>(
+    `
+      SELECT *
+      FROM users
+      WHERE lower(username) = lower(?) OR lower(email) = lower(?)
+      LIMIT 1
+    `,
+    [identifier, identifier],
+  )) ?? undefined;
 
   if (!user) {
     return null;
@@ -193,6 +191,186 @@ export async function authenticateUser(identifier: string, password: string) {
 export function getUserAuthRecord(userId: string) {
   const db = getDb();
   return db.prepare("SELECT * FROM users WHERE id = ? LIMIT 1").get(userId) as UserRow | undefined;
+}
+
+export async function getUserAuthRecordAsync(userId: string) {
+  return ((await dbGet<UserRow>("SELECT * FROM users WHERE id = ? LIMIT 1", [userId])) ??
+    undefined) as UserRow | undefined;
+}
+
+export async function getPortalUserByIdAsync(userId: string): Promise<PortalUser | null> {
+  const user = await getUserAuthRecordAsync(userId);
+
+  if (!user || user.is_admin) {
+    return null;
+  }
+
+  const [accounts, icloud, appleAccounts, items] = await Promise.all([
+    dbAll<AccountRow>(
+      `
+        SELECT id, total_bytes, used_bytes, kind
+        FROM hidden_google_accounts
+        WHERE user_id = ?
+        ORDER BY created_at ASC
+      `,
+      [userId],
+    ),
+    dbGet<{
+      connected: number;
+      last_sync: string | null;
+      pending_items: number;
+    }>(
+      `
+        SELECT connected, last_sync, pending_items
+        FROM icloud_connections
+        WHERE user_id = ?
+      `,
+      [userId],
+    ),
+    dbAll<{
+      id: string;
+      label: string;
+      apple_email: string;
+      status: string;
+      last_sync: string | null;
+    }>(
+      `
+        SELECT id, label, apple_email, status, last_sync
+        FROM apple_accounts
+        WHERE user_id = ?
+        ORDER BY created_at ASC
+      `,
+      [userId],
+    ),
+    dbAll<ItemRow>(
+      `
+        SELECT id, section, title, subtitle, bytes, item_kind, source, source_account_id, occurred_at, unread, meta_json
+        FROM vault_items
+        WHERE user_id = ?
+        ORDER BY occurred_at DESC
+      `,
+      [userId],
+    ),
+  ]);
+
+  return {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    fullName: user.full_name,
+    avatar: user.avatar,
+    roleLabel: user.role_label,
+    assignedChannels: accounts.length,
+    managedPools: accounts.map((account) => ({
+      id: account.id,
+      totalBytes: Number(account.total_bytes),
+      usedBytes: Number(account.used_bytes),
+      kind: "google" as const,
+    })),
+    icloud: {
+      lastSync: icloud?.last_sync ?? null,
+      newItemsWaiting: Number(icloud?.pending_items ?? 0),
+      accounts: appleAccounts.map((account) => ({
+        id: account.id,
+        label: account.label,
+        appleEmail: account.apple_email,
+        status: account.status,
+        lastSync: account.last_sync,
+      })),
+    },
+    sections: {
+      photos: items
+        .filter((item) => item.section === "photos")
+        .map<PhotoItem>((item) => ({
+          id: item.id,
+          name: item.title,
+          size: Number(item.bytes),
+          kind: item.item_kind === "video" ? "video" : "image",
+          takenAt: item.occurred_at,
+          source: item.source ?? "import",
+        })),
+      videos: items
+        .filter((item) => item.section === "videos")
+        .map<PhotoItem>((item) => ({
+          id: item.id,
+          name: item.title,
+          size: Number(item.bytes),
+          kind: "video",
+          takenAt: item.occurred_at,
+          source: item.source ?? "import",
+        })),
+      drive: items
+        .filter((item) => item.section === "drive")
+        .map<DriveItem>((item) => ({
+          id: item.id,
+          name: item.title,
+          size: Number(item.bytes),
+          type:
+            item.item_kind === "archive" ||
+            item.item_kind === "document" ||
+            item.item_kind === "folder" ||
+            item.item_kind === "sheet" ||
+            item.item_kind === "image" ||
+            item.item_kind === "video"
+              ? item.item_kind
+              : "document",
+          updatedAt: item.occurred_at,
+        })),
+      passwords: items
+        .filter((item) => item.section === "passwords")
+        .map<PasswordItem>((item) => ({
+          id: item.id,
+          label: item.title,
+          username: item.subtitle ?? "",
+          updatedAt: item.occurred_at,
+          encryptedBytes: Number(item.bytes),
+        })),
+      notes: items
+        .filter((item) => item.section === "notes")
+        .map<NoteItem>((item) => ({
+          id: item.id,
+          title: item.title,
+          preview: item.subtitle ?? "",
+          updatedAt: item.occurred_at,
+          size: Number(item.bytes),
+        })),
+      messages: items
+        .filter((item) => item.section === "messages")
+        .map<MessageItem>((item) => ({
+          id: item.id,
+          contact: item.title,
+          channel: item.subtitle ?? "",
+          updatedAt: item.occurred_at,
+          size: Number(item.bytes),
+        })),
+      mail: items
+        .filter((item) => item.section === "mail")
+        .map<MailItem>((item) => ({
+          id: item.id,
+          subject: item.title,
+          from: item.subtitle ?? "",
+          receivedAt: item.occurred_at,
+          size: Number(item.bytes),
+          unread: Boolean(item.unread),
+        })),
+    },
+  };
+}
+
+export async function getAdminByIdAsync(userId: string) {
+  const user = await getUserAuthRecordAsync(userId);
+  if (!user || !user.is_admin) {
+    return null;
+  }
+
+  return {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    fullName: user.full_name,
+    avatar: user.avatar,
+    roleLabel: user.role_label,
+  };
 }
 
 export function getPortalUserById(userId: string): PortalUser | null {
@@ -460,6 +638,54 @@ export function listGoogleAssignmentsDetailed(userId?: string) {
   }>;
 }
 
+export async function listGoogleAssignmentsDetailedAsync(userId?: string) {
+  const query = userId
+    ? `
+      SELECT h.id, h.account_label, h.google_email, h.kind, h.status, h.scopes, h.refresh_token, h.last_synced_at,
+             u.id as user_id, u.username, u.full_name
+      FROM hidden_google_accounts h
+      INNER JOIN users u ON u.id = h.user_id
+      WHERE u.is_admin = 0 AND u.id = ?
+      ORDER BY u.full_name ASC, h.created_at ASC
+    `
+    : `
+      SELECT h.id, h.account_label, h.google_email, h.kind, h.status, h.scopes, h.refresh_token, h.last_synced_at,
+             u.id as user_id, u.username, u.full_name
+      FROM hidden_google_accounts h
+      INNER JOIN users u ON u.id = h.user_id
+      WHERE u.is_admin = 0
+      ORDER BY u.full_name ASC, h.created_at ASC
+    `;
+
+  return userId
+    ? dbAll<{
+        id: string;
+        account_label: string;
+        google_email: string;
+        kind: string;
+        status: string;
+        scopes: string | null;
+        refresh_token: string | null;
+        last_synced_at: string | null;
+        user_id: string;
+        username: string;
+        full_name: string;
+      }>(query, [userId])
+    : dbAll<{
+        id: string;
+        account_label: string;
+        google_email: string;
+        kind: string;
+        status: string;
+        scopes: string | null;
+        refresh_token: string | null;
+        last_synced_at: string | null;
+        user_id: string;
+        username: string;
+        full_name: string;
+      }>(query);
+}
+
 export function listHiddenAccountSyncSummaries(userId: string): HiddenAccountSyncSummary[] {
   const db = getDb();
   const accounts = db
@@ -599,6 +825,94 @@ export function listManagedMembers(): AdminManagedMember[] {
   });
 }
 
+export async function listManagedMembersAsync(): Promise<AdminManagedMember[]> {
+  const members = await dbAll<{
+    id: string;
+    username: string;
+    email: string;
+    full_name: string;
+    avatar: string;
+    role_label: string;
+    created_at: string;
+  }>(
+    `
+      SELECT id, username, email, full_name, avatar, role_label, created_at
+      FROM users
+      WHERE is_admin = 0
+      ORDER BY created_at DESC
+    `,
+  );
+
+  return Promise.all(
+    members.map(async (member) => {
+      const [hiddenAccounts, appleAccounts] = await Promise.all([
+        dbAll<{
+          id: string;
+          account_label: string;
+          google_email: string;
+          kind: string;
+          status: string;
+          total_bytes: number;
+          used_bytes: number;
+          refresh_token: string | null;
+          login_password_json: string | null;
+        }>(
+          `
+            SELECT id, account_label, google_email, kind, status, total_bytes, used_bytes, refresh_token, login_password_json
+            FROM hidden_google_accounts
+            WHERE user_id = ?
+            ORDER BY created_at ASC
+          `,
+          [member.id],
+        ),
+        dbAll<{
+          id: string;
+          label: string;
+          apple_email: string;
+          status: string;
+          last_sync: string | null;
+        }>(
+          `
+            SELECT id, label, apple_email, status, last_sync
+            FROM apple_accounts
+            WHERE user_id = ?
+            ORDER BY created_at ASC
+          `,
+          [member.id],
+        ),
+      ]);
+
+      return {
+        id: member.id,
+        username: member.username,
+        email: member.email,
+        fullName: member.full_name,
+        avatar: member.avatar,
+        roleLabel: member.role_label,
+        createdAt: member.created_at,
+        hiddenAccounts: hiddenAccounts.map((account) => ({
+          id: account.id,
+          label: account.account_label,
+          email: account.google_email,
+          kind: "google" as const,
+          status: account.status,
+          totalBytes: Number(account.total_bytes),
+          usedBytes: Number(account.used_bytes),
+          hasRefreshToken: Boolean(account.refresh_token),
+          savedPassword: decryptVaultSecret(parseMetaJson(account.login_password_json)),
+        })),
+        appleAccounts: appleAccounts.map((account) => ({
+          id: account.id,
+          label: account.label,
+          appleEmail: account.apple_email,
+          status: account.status,
+          lastSync: account.last_sync,
+        })),
+      };
+    }),
+  );
+}
+
 export function listUploadHistory(userId: string): UploadHistoryEntry[] {
   const db = getDb();
   return db
@@ -632,6 +946,20 @@ export function listFullUploadHistory(userId: string): UploadHistoryEntry[] {
     .all(userId) as UploadHistoryEntry[];
 }
 
+export async function listFullUploadHistoryAsync(userId: string): Promise<UploadHistoryEntry[]> {
+  return dbAll<UploadHistoryEntry>(
+    `
+      SELECT id, title, source, bytes AS size, occurred_at AS occurredAt, section
+      FROM vault_items
+      WHERE user_id = ?
+        AND section IN ('photos', 'videos', 'drive')
+        AND item_kind != 'folder'
+      ORDER BY occurred_at DESC
+    `,
+    [userId],
+  );
+}
+
 export function listVaultItemsBySection(userId: string, section: string) {
   const db = getDb();
   return db
@@ -645,6 +973,20 @@ export function listVaultItemsBySection(userId: string, section: string) {
     )
     .all(userId, section)
     .map((row) => mapVaultItemRow(row as ItemRow));
+}
+
+export async function listVaultItemsBySectionAsync(userId: string, section: string) {
+  const rows = await dbAll<ItemRow>(
+    `
+      SELECT id, section, title, subtitle, bytes, item_kind, source, source_account_id, occurred_at, unread, meta_json
+      FROM vault_items
+      WHERE user_id = ? AND section = ?
+      ORDER BY occurred_at DESC
+    `,
+    [userId, section],
+  );
+
+  return rows.map((row) => mapVaultItemRow(row));
 }
 
 export function listDriveFoldersAtPath(userId: string, folderPath: string) {
@@ -682,8 +1024,54 @@ export function listDriveFoldersAtPath(userId: string, folderPath: string) {
     .filter((folder) => folder.parentPath === folderPath);
 }
 
+export async function listDriveFoldersAtPathAsync(userId: string, folderPath: string) {
+  const rows = await dbAll<{
+    id: string;
+    source_account_id: string | null;
+    meta_json: string | null;
+  }>(
+    `
+      SELECT id, source_account_id, meta_json
+      FROM vault_items
+      WHERE user_id = ? AND section = 'drive' AND item_kind = 'folder'
+      ORDER BY title COLLATE NOCASE ASC
+    `,
+    [userId],
+  );
+
+  return rows
+    .map((row) => {
+      const meta = parseMetaJson(row.meta_json);
+      const fullPath = typeof meta?.fullPath === "string" ? meta.fullPath : "";
+      const parentPath = typeof meta?.folderPath === "string" ? meta.folderPath : "";
+      const parts = fullPath.split("/").filter(Boolean);
+      return {
+        id: row.id,
+        name: parts.at(-1) ?? fullPath,
+        fullPath,
+        parentPath,
+        sourceAccountId: row.source_account_id,
+        fileId: typeof meta?.fileId === "string" ? meta.fileId : null,
+      } satisfies DriveFolderRecord;
+    })
+    .filter((folder) => folder.parentPath === folderPath);
+}
+
 export function listDriveFilesAtPath(userId: string, folderPath: string) {
   return listVaultItemsBySection(userId, "drive").filter((item) => {
+    if (item.itemKind === "folder") {
+      return false;
+    }
+
+    const itemFolderPath =
+      typeof item.meta?.folderPath === "string" ? item.meta.folderPath : "";
+    return itemFolderPath === folderPath;
+  });
+}
+
+export async function listDriveFilesAtPathAsync(userId: string, folderPath: string) {
+  const items = await listVaultItemsBySectionAsync(userId, "drive");
+  return items.filter((item) => {
     if (item.itemKind === "folder") {
       return false;
     }
@@ -706,6 +1094,20 @@ export function getVaultItemById(userId: string, itemId: string) {
       `,
     )
     .get(userId, itemId) as ItemRow | undefined;
+
+  return row ? mapVaultItemRow(row) : null;
+}
+
+export async function getVaultItemByIdAsync(userId: string, itemId: string) {
+  const row = (await dbGet<ItemRow>(
+    `
+      SELECT id, section, title, subtitle, bytes, item_kind, source, source_account_id, occurred_at, unread, meta_json
+      FROM vault_items
+      WHERE user_id = ? AND id = ?
+      LIMIT 1
+    `,
+    [userId, itemId],
+  )) as ItemRow | null;
 
   return row ? mapVaultItemRow(row) : null;
 }
@@ -1668,4 +2070,39 @@ export function listAuditLogs(limit = 20): AdminAuditEntry[] {
       details: row.details,
       createdAt: row.created_at,
     }));
+}
+
+export async function listAuditLogsAsync(limit = 20): Promise<AdminAuditEntry[]> {
+  const rows = await dbAll<{
+    id: string;
+    actor_username: string;
+    target_username: string | null;
+    action: string;
+    details: string | null;
+    created_at: string;
+  }>(
+    `
+      SELECT l.id,
+             actor.username AS actor_username,
+             target.username AS target_username,
+             l.action,
+             l.details,
+             l.created_at
+      FROM audit_logs l
+      INNER JOIN users actor ON actor.id = l.actor_user_id
+      LEFT JOIN users target ON target.id = l.target_user_id
+      ORDER BY l.created_at DESC
+      LIMIT ?
+    `,
+    [limit],
+  );
+
+  return rows.map((row) => ({
+    id: row.id,
+    actorLabel: row.actor_username,
+    targetLabel: row.target_username,
+    action: row.action,
+    details: row.details,
+    createdAt: row.created_at,
+  }));
 }

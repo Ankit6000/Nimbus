@@ -6,7 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { loadFullGmailMessage } from "@/lib/google";
 import { sectionMeta } from "@/lib/data";
 import { formatBytes, formatDateTime } from "@/lib/format";
-import { getVaultItemById, readVaultPassword } from "@/lib/repository";
+import { getVaultItemByIdAsync, readVaultPassword } from "@/lib/repository";
 
 type VaultItemPageProps = {
   params: Promise<{
@@ -17,7 +17,7 @@ type VaultItemPageProps = {
 export default async function VaultItemPage({ params }: VaultItemPageProps) {
   const user = await requireUser();
   const { itemId } = await params;
-  const item = getVaultItemById(user.id, itemId);
+  const item = await getVaultItemByIdAsync(user.id, itemId);
 
   if (!item) {
     notFound();

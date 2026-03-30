@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { getAdminById, getPortalUserById } from "@/lib/repository";
+import { getAdminByIdAsync, getPortalUserByIdAsync } from "@/lib/repository";
 
 const SESSION_COOKIE = process.env.NODE_ENV === "production" ? "__Host-nimbus-session" : "nimbus-session";
 
@@ -26,7 +26,7 @@ export async function getCurrentUser() {
 
   if (!userId) return null;
 
-  return getPortalUserById(userId);
+  return getPortalUserByIdAsync(userId);
 }
 
 export async function requireUser() {
@@ -47,7 +47,7 @@ export async function requireAdmin() {
     redirect("/admin");
   }
 
-  const admin = getAdminById(userId);
+  const admin = await getAdminByIdAsync(userId);
 
   if (!admin) {
     redirect("/admin");
@@ -64,5 +64,5 @@ export async function getCurrentAdmin() {
     return null;
   }
 
-  return getAdminById(userId);
+  return getAdminByIdAsync(userId);
 }

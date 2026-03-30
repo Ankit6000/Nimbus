@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { formatBytes, formatDateTime } from "@/lib/format";
-import { listFullUploadHistory } from "@/lib/repository";
+import { listFullUploadHistoryAsync } from "@/lib/repository";
 
 export default async function ActivityPage() {
   const user = await requireUser();
-  const entries = listFullUploadHistory(user.id);
+  const entries = await listFullUploadHistoryAsync(user.id);
 
   return (
     <div className="grid gap-6">

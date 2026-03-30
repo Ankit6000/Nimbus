@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { deleteGoogleDriveFile, syncAssignedGoogleAccountsForUser } from "@/lib/google";
-import { deleteVaultItemAndRelated, getVaultItemById } from "@/lib/repository";
+import { deleteVaultItemAndRelated, getVaultItemByIdAsync } from "@/lib/repository";
 
 const SESSION_COOKIE = process.env.NODE_ENV === "production" ? "__Host-nimbus-session" : "nimbus-session";
 
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing item id." }, { status: 400 });
   }
 
-  const target = getVaultItemById(userId, itemId);
+  const target = await getVaultItemByIdAsync(userId, itemId);
 
   if (!target) {
     return NextResponse.json({ error: "Item not found." }, { status: 404 });

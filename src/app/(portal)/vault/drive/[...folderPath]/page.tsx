@@ -3,7 +3,7 @@ import { createDriveFolderAction, uploadFilesToGoogleDriveAction } from "@/app/a
 import { VaultItemMenu } from "@/components/vault-item-menu";
 import { requireUser } from "@/lib/auth";
 import { formatBytes, formatDateTime } from "@/lib/format";
-import { listDriveFilesAtPath, listDriveFoldersAtPath } from "@/lib/repository";
+import { listDriveFilesAtPathAsync, listDriveFoldersAtPathAsync } from "@/lib/repository";
 
 type DriveFolderPageProps = {
   params: Promise<{
@@ -20,8 +20,8 @@ export default async function DriveFolderPage({ params, searchParams }: DriveFol
   const created = paramsMap?.drive === "folder-created";
   const invalid = paramsMap?.drive === "folder-invalid";
   const errored = paramsMap?.drive === "folder-error";
-  const folders = listDriveFoldersAtPath(user.id, folderPath);
-  const files = listDriveFilesAtPath(user.id, folderPath);
+  const folders = await listDriveFoldersAtPathAsync(user.id, folderPath);
+  const files = await listDriveFilesAtPathAsync(user.id, folderPath);
   const breadcrumbParts = folderPath.split("/").filter(Boolean);
 
   return (

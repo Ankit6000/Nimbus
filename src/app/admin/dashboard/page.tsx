@@ -11,7 +11,7 @@ import {
 } from "@/app/actions";
 import { requireAdmin } from "@/lib/auth";
 import { formatBytes, formatDateTime } from "@/lib/format";
-import { listManagedMembers } from "@/lib/repository";
+import { listManagedMembersAsync } from "@/lib/repository";
 
 type AdminDashboardPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -33,7 +33,7 @@ const adminMessages: Record<string, string> = {
 
 export default async function AdminDashboardPage({ searchParams }: AdminDashboardPageProps) {
   const admin = await requireAdmin();
-  const members = listManagedMembers();
+  const members = await listManagedMembersAsync();
   const params = searchParams ? await searchParams : undefined;
   const messageKey = typeof params?.admin === "string" ? params.admin : undefined;
   const message = messageKey ? adminMessages[messageKey] : undefined;

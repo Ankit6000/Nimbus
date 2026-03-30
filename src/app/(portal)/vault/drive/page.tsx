@@ -3,7 +3,7 @@ import { createDriveFolderAction, uploadFilesToGoogleDriveAction } from "@/app/a
 import { VaultItemMenu } from "@/components/vault-item-menu";
 import { requireUser } from "@/lib/auth";
 import { formatBytes, formatDateTime } from "@/lib/format";
-import { listDriveFilesAtPath, listDriveFoldersAtPath } from "@/lib/repository";
+import { listDriveFilesAtPathAsync, listDriveFoldersAtPathAsync } from "@/lib/repository";
 
 type DriveRootPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -15,8 +15,8 @@ export default async function DriveRootPage({ searchParams }: DriveRootPageProps
   const created = params?.drive === "folder-created";
   const invalid = params?.drive === "folder-invalid";
   const errored = params?.drive === "folder-error";
-  const folders = listDriveFoldersAtPath(user.id, "");
-  const files = listDriveFilesAtPath(user.id, "");
+  const folders = await listDriveFoldersAtPathAsync(user.id, "");
+  const files = await listDriveFilesAtPathAsync(user.id, "");
 
   return (
     <div className="grid gap-6">

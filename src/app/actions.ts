@@ -17,7 +17,7 @@ import {
   createManagedMember,
   createSyncRun,
   deleteVaultItemAndRelated,
-  getVaultItemById,
+  getVaultItemByIdAsync,
   disconnectHiddenGoogleAccount,
   deleteHiddenAccountAssignment,
   deleteManagedMember,
@@ -448,7 +448,7 @@ export async function deleteVaultItemAction(formData: FormData) {
     redirect(`${redirectTo}?item=delete-invalid`);
   }
 
-  const target = getVaultItemById(user.id, itemId);
+  const target = await getVaultItemByIdAsync(user.id, itemId);
 
   if (!target) {
     redirect(`${redirectTo}?item=delete-missing`);

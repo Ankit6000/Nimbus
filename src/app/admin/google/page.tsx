@@ -2,7 +2,7 @@ import Link from "next/link";
 import { disconnectGoogleAccountAction, logoutAction } from "@/app/actions";
 import { requireAdmin } from "@/lib/auth";
 import { formatDateTime } from "@/lib/format";
-import { listAuditLogs, listGoogleAssignmentsDetailed } from "@/lib/repository";
+import { listAuditLogsAsync, listGoogleAssignmentsDetailedAsync } from "@/lib/repository";
 
 type AdminGooglePageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -23,8 +23,8 @@ export default async function AdminGooglePage({ searchParams }: AdminGooglePageP
   const userFilter = typeof params?.user === "string" ? params.user : undefined;
   const googleState = typeof params?.google === "string" ? params.google : undefined;
   const rawMessage = typeof params?.message === "string" ? params.message : undefined;
-  const assignments = listGoogleAssignmentsDetailed(userFilter);
-  const auditEntries = listAuditLogs(12);
+  const assignments = await listGoogleAssignmentsDetailedAsync(userFilter);
+  const auditEntries = await listAuditLogsAsync(12);
   const envReady = Boolean(
     process.env.GOOGLE_CLIENT_ID &&
       process.env.GOOGLE_CLIENT_SECRET &&
