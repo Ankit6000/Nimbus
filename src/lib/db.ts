@@ -476,7 +476,7 @@ function ensureSqliteColumn(db: DatabaseSync, table: string, column: string, def
   }
 }
 
-async function ensurePgColumn(sql: Sql, table: string, column: string, definition: string) {
+async function ensurePgColumn(table: string, column: string, definition: string) {
   const exists = await runPgQuery<{ exists: number }>(
     `
       SELECT 1 AS exists
@@ -579,7 +579,7 @@ function seedSqliteDatabase(db: DatabaseSync) {
   }
 }
 
-async function seedPostgresDatabase(sql: Sql) {
+async function seedPostgresDatabase() {
   const bootstrapAdmin = getBootstrapAdminConfig();
   const existingAdmin = await runPgQuery<{ id: string }>(
     `
@@ -650,17 +650,17 @@ async function seedPostgresDatabase(sql: Sql) {
   }
 }
 
-async function ensurePostgresReady(sql: Sql) {
+async function ensurePostgresReady() {
   await runPgExec(schemaSql);
-  await ensurePgColumn(sql, "users", "is_admin", "INTEGER NOT NULL DEFAULT 0");
-  await ensurePgColumn(sql, "hidden_google_accounts", "login_password_json", "TEXT");
-  await ensurePgColumn(sql, "vault_items", "source_account_id", "TEXT");
-  await ensurePgColumn(sql, "sync_runs", "account_id", "TEXT");
-  await ensurePgColumn(sql, "sync_runs", "item_count", "INTEGER NOT NULL DEFAULT 0");
+  await ensurePgColumn("users", "is_admin", "INTEGER NOT NULL DEFAULT 0");
+  await ensurePgColumn("hidden_google_accounts", "login_password_json", "TEXT");
+  await ensurePgColumn("vault_items", "source_account_id", "TEXT");
+  await ensurePgColumn("sync_runs", "account_id", "TEXT");
+  await ensurePgColumn("sync_runs", "item_count", "INTEGER NOT NULL DEFAULT 0");
   await ensurePgColumnType("hidden_google_accounts", "total_bytes", "bigint", "total_bytes::bigint");
   await ensurePgColumnType("hidden_google_accounts", "used_bytes", "bigint", "used_bytes::bigint");
   await ensurePgColumnType("vault_items", "bytes", "bigint", "bytes::bigint");
-  await seedPostgresDatabase(sql);
+  await seedPostgresDatabase();
 }
 
 function getSqliteDb() {
@@ -695,7 +695,7 @@ export async function initDb() {
     globalWithDb.__vaultInitPromise = (async () => {
       if (shouldUsePostgres()) {
         try {
-          await ensurePostgresReady(getPgClient());
+          await ensurePostgresReady();
         } catch (error) {
           if (process.env.NODE_ENV === "production" || !allowSqliteFallback()) {
             throw error;
