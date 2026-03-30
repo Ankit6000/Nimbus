@@ -7,8 +7,8 @@ import {
   isVideoLikeFile,
 } from "@/lib/file-types";
 import {
-  createVaultAudioNoteRecord,
-  getVaultItemById,
+  createVaultAudioNoteRecordAsync,
+  getVaultItemByIdAsync,
   getDriveFolderMetaByPathAsync,
   createSyncRunDetailedAsync,
   getHiddenGoogleAccountAssignmentAsync,
@@ -19,7 +19,7 @@ import {
   replaceMailSnapshotAsync,
   upsertDriveSnapshotAsync,
   upsertHiddenGoogleAccountCredentialAsync,
-  upsertVaultNote,
+  upsertVaultNoteAsync,
 } from "@/lib/repository";
 
 const INTERNAL_VAULT_ROOT = "Nimbus Vault Internal";
@@ -570,7 +570,7 @@ export async function saveVaultNoteToGoogleDrive(input: {
   title: string;
   content: string;
 }) {
-  const existing = input.itemId ? getVaultItemById(input.userId, input.itemId) : null;
+  const existing = input.itemId ? await getVaultItemByIdAsync(input.userId, input.itemId) : null;
   const target = await getWritableGoogleTarget(input.userId, existing?.sourceAccountId ?? null);
   const auth = createOAuthClient(target.refresh_token);
   const drive = google.drive({ version: "v3", auth });
@@ -613,7 +613,7 @@ export async function saveVaultNoteToGoogleDrive(input: {
     })) as { data: { id?: string | null; webViewLink?: string | null; mimeType?: string | null } };
   }
 
-  return upsertVaultNote({
+  return upsertVaultNoteAsync({
     userId: input.userId,
     itemId: input.itemId,
     title: input.title,
@@ -661,7 +661,7 @@ export async function saveVaultAudioNoteToGoogleDrive(input: {
     fields: "id,webViewLink,mimeType",
   })) as { data: { id?: string | null; webViewLink?: string | null; mimeType?: string | null } };
 
-  return createVaultAudioNoteRecord({
+  return createVaultAudioNoteRecordAsync({
     userId: input.userId,
     title: input.title || "Voice Note",
     bytes: buffer.byteLength,

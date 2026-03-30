@@ -1259,6 +1259,50 @@ export function upsertVaultNote(input: {
   return id;
 }
 
+export async function upsertVaultNoteAsync(input: {
+  userId: string;
+  itemId?: string;
+  title: string;
+  content: string;
+  bytes?: number;
+  itemKind?: string;
+  source?: string;
+  sourceAccountId?: string | null;
+  subtitle?: string | null;
+  meta?: Record<string, unknown>;
+}) {
+  const now = new Date().toISOString();
+  const preview = input.subtitle ?? input.content.slice(0, 180);
+  const bytes = input.bytes ?? Buffer.byteLength(input.content, "utf8");
+  const itemKind = input.itemKind ?? "note";
+  const source = input.source ?? "vault-note";
+  const sourceAccountId = input.sourceAccountId ?? null;
+  const meta = JSON.stringify({ content: input.content, ...(input.meta ?? {}) });
+
+  if (input.itemId) {
+    await dbRun(
+      `
+        UPDATE vault_items
+        SET title = ?, subtitle = ?, bytes = ?, item_kind = ?, source = ?, source_account_id = ?, occurred_at = ?, meta_json = ?
+        WHERE id = ? AND user_id = ? AND section = 'notes'
+      `,
+      [input.title, preview, bytes, itemKind, source, sourceAccountId, now, meta, input.itemId, input.userId],
+    );
+    return input.itemId;
+  }
+
+  const id = randomUUID();
+  await dbRun(
+    `
+      INSERT INTO vault_items
+      (id, user_id, section, title, subtitle, bytes, item_kind, source, source_account_id, occurred_at, unread, meta_json)
+      VALUES (?, ?, 'notes', ?, ?, ?, ?, ?, ?, ?, 0, ?)
+    `,
+    [id, input.userId, input.title, preview, bytes, itemKind, source, sourceAccountId, now, meta],
+  );
+  return id;
+}
+
 export function createVaultAudioNoteRecord(input: {
   userId: string;
   title: string;
@@ -1289,6 +1333,41 @@ export function createVaultAudioNoteRecord(input: {
     input.sourceAccountId ?? null,
     now,
     meta,
+  );
+
+  return id;
+}
+
+export async function createVaultAudioNoteRecordAsync(input: {
+  userId: string;
+  title: string;
+  bytes: number;
+  source?: string;
+  sourceAccountId?: string | null;
+  subtitle?: string;
+  meta?: Record<string, unknown>;
+}) {
+  const id = randomUUID();
+  const now = new Date().toISOString();
+  const meta = JSON.stringify(input.meta ?? {});
+
+  await dbRun(
+    `
+      INSERT INTO vault_items
+      (id, user_id, section, title, subtitle, bytes, item_kind, source, source_account_id, occurred_at, unread, meta_json)
+      VALUES (?, ?, 'notes', ?, ?, ?, 'audio-note', ?, ?, ?, 0, ?)
+    `,
+    [
+      id,
+      input.userId,
+      input.title,
+      input.subtitle ?? "Voice note",
+      input.bytes,
+      input.source ?? "vault-audio-note",
+      input.sourceAccountId ?? null,
+      now,
+      meta,
+    ],
   );
 
   return id;
