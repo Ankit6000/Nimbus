@@ -15,7 +15,7 @@ import {
   authenticateUser,
   createHiddenAccountAssignment,
   createManagedMember,
-  createSyncRun,
+  createSyncRunAsync,
   deleteVaultItemAndRelated,
   getVaultItemByIdAsync,
   disconnectHiddenGoogleAccount,
@@ -67,7 +67,7 @@ export async function logoutAction() {
 export async function requestIcloudSyncAction(formData: FormData) {
   const userId = String(formData.get("userId") ?? "");
   queueAppleImport({ userId, appleAccountId: null });
-  createSyncRun(userId, "icloud", "queued", "iCloud sync was requested from the dashboard.");
+  await createSyncRunAsync(userId, "icloud", "queued", "iCloud sync was requested from the dashboard.");
   redirect("/dashboard?sync=queued");
 }
 
@@ -149,7 +149,7 @@ export async function linkAppleAccountAction(formData: FormData) {
   }
 
   createAppleAccountLink({ userId, label, appleEmail });
-  createSyncRun(userId, "icloud", "linked", `Apple account ${appleEmail} linked to the vault.`);
+  await createSyncRunAsync(userId, "icloud", "linked", `Apple account ${appleEmail} linked to the vault.`);
   redirect("/dashboard?sync=apple-linked");
 }
 
@@ -162,7 +162,7 @@ export async function queueAppleAccountImportAction(formData: FormData) {
   }
 
   queueAppleImport({ userId, appleAccountId: appleAccountId || null });
-  createSyncRun(userId, "icloud", "queued", "Apple account import was queued from the dashboard.");
+  await createSyncRunAsync(userId, "icloud", "queued", "Apple account import was queued from the dashboard.");
   redirect("/dashboard?sync=apple-queued");
 }
 
@@ -296,10 +296,10 @@ export async function importApplePhotosAction(formData: FormData) {
     files: entries,
   });
 
-  createSyncRun(
-    userId,
-    "apple-import",
-    imported > 0 ? "success" : "skipped",
+    await createSyncRunAsync(
+      userId,
+      "apple-import",
+      imported > 0 ? "success" : "skipped",
     `Imported ${imported} photo/video file(s) through the browser picker.`,
   );
   redirect(`/dashboard?sync=${imported > 0 ? "apple-imported" : "apple-import-invalid"}`);
@@ -320,10 +320,10 @@ export async function importAppleFilesAction(formData: FormData) {
     files: entries,
   });
 
-  createSyncRun(
-    userId,
-    "apple-files",
-    imported > 0 ? "success" : "skipped",
+    await createSyncRunAsync(
+      userId,
+      "apple-files",
+      imported > 0 ? "success" : "skipped",
     `Imported ${imported} file(s) through the browser file picker.`,
   );
   redirect(`/dashboard?sync=${imported > 0 ? "file-imported" : "file-import-invalid"}`);
@@ -341,7 +341,7 @@ export async function uploadFilesToGoogleDriveAction(formData: FormData) {
 
   try {
     const uploaded = await uploadFilesToConnectedGoogleDrive(user.id, entries, folderPath);
-    createSyncRun(
+    await createSyncRunAsync(
       user.id,
       "google-upload",
       uploaded > 0 ? "success" : "skipped",
@@ -350,7 +350,7 @@ export async function uploadFilesToGoogleDriveAction(formData: FormData) {
     redirect(`${redirectTo}?sync=${uploaded > 0 ? "google-uploaded" : "google-upload-invalid"}`);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Google Drive upload failed.";
-    createSyncRun(user.id, "google-upload", "error", message);
+    await createSyncRunAsync(user.id, "google-upload", "error", message);
     redirect(`${redirectTo}?sync=google-upload-error`);
   }
 }

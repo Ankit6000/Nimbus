@@ -2316,6 +2316,20 @@ export function createSyncRun(userId: string, provider: string, status: string, 
   });
 }
 
+export async function createSyncRunAsync(
+  userId: string,
+  provider: string,
+  status: string,
+  message: string,
+) {
+  return createSyncRunDetailedAsync({
+    userId,
+    provider,
+    status,
+    message,
+  });
+}
+
 export function createSyncRunDetailed(input: {
   userId: string;
   provider: string;
