@@ -14,6 +14,7 @@ type VaultItemMenuProps = {
 export function VaultItemMenu({ item, redirectTo, align = "right" }: VaultItemMenuProps) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const hasBinary =
     typeof item.meta?.storedPath === "string" || typeof item.meta?.fileId === "string";
   const canDownload = hasBinary && item.itemKind !== "folder" && item.section !== "mail";
@@ -25,6 +26,7 @@ export function VaultItemMenu({ item, redirectTo, align = "right" }: VaultItemMe
     }
 
     setDeleting(true);
+    setDeleteError(null);
 
     const response = await fetch("/api/vault/delete", {
       method: "POST",
@@ -35,13 +37,14 @@ export function VaultItemMenu({ item, redirectTo, align = "right" }: VaultItemMe
     });
 
     if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
       setDeleting(false);
-      router.push(`${redirectTo}?item=delete-error`);
+      setDeleteError(payload?.error ?? "Delete failed.");
       router.refresh();
       return;
     }
 
-    router.push(`${redirectTo}?item=deleted`);
+    router.replace(redirectTo);
     router.refresh();
   }
 
@@ -86,8 +89,14 @@ export function VaultItemMenu({ item, redirectTo, align = "right" }: VaultItemMe
           disabled={deleting}
           className="block w-full rounded-xl px-3 py-2 text-left text-sm text-[#b54222] transition hover:bg-[#f8e6df] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {deleting ? "Deleting..." : "Delete"}
+          <span className="inline-flex items-center gap-2">
+            {deleting ? (
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" />
+            ) : null}
+            <span>{deleting ? "Deleting..." : "Delete"}</span>
+          </span>
         </button>
+        {deleteError ? <p className="px-3 py-2 text-xs text-[#b54222]">{deleteError}</p> : null}
       </div>
     </details>
   );

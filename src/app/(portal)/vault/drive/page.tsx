@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { createDriveFolderAction, uploadFilesToGoogleDriveAction } from "@/app/actions";
+import { createDriveFolderAction } from "@/app/actions";
+import { GoogleUploadForm } from "@/components/google-upload-form";
+import { PendingSubmitButton } from "@/components/pending-submit-button";
 import { VaultItemMenu } from "@/components/vault-item-menu";
 import { requireUser } from "@/lib/auth";
 import { formatBytes, formatDateTime } from "@/lib/format";
@@ -48,30 +50,30 @@ export default async function DriveRootPage({ searchParams }: DriveRootPageProps
               placeholder="Folder name"
               className="flex-1 rounded-2xl border border-[#ddccb9] bg-white px-4 py-3 outline-none"
             />
-            <button type="submit" className="rounded-full bg-[#241b14] px-5 py-3 text-sm font-semibold text-[#fff6ed]">
-              Create Folder
-            </button>
+            <PendingSubmitButton
+              idleLabel="Create Folder"
+              pendingLabel="Creating..."
+              className="rounded-full bg-[#241b14] px-5 py-3 text-sm font-semibold text-[#fff6ed]"
+            />
           </div>
         </form>
 
-        <form action={uploadFilesToGoogleDriveAction} className="rounded-[28px] border border-[#ead9c8] bg-[#fffaf2] p-5">
-          <input type="hidden" name="folderPath" value="" />
-          <input type="hidden" name="redirectTo" value="/vault/drive" />
+        <div className="rounded-[28px] border border-[#ead9c8] bg-[#fffaf2] p-5">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#8b6d52]">Upload</p>
           <h2 className="font-heading mt-2 text-3xl font-semibold text-[#241b14]">Upload to root</h2>
           <p className="mt-2 text-sm leading-6 text-[#5b4635]">
             Upload any files into the root library. Images will also appear in Photos, and videos will also appear in Videos after refresh.
           </p>
-          <input
-            name="files"
-            type="file"
-            multiple
-            className="mt-4 block w-full rounded-2xl border border-[#ddccb9] bg-white px-4 py-3 text-sm"
-          />
-          <button type="submit" className="mt-4 rounded-full bg-[#436b5c] px-5 py-3 text-sm font-semibold text-[#f7f2ea]">
-            Upload Files
-          </button>
-        </form>
+          <div className="mt-4">
+            <GoogleUploadForm
+              folderPath=""
+              redirectTo="/vault/drive"
+              buttonLabel="Upload Files"
+              buttonClassName="mt-1 rounded-full bg-[#436b5c] px-5 py-3 text-sm font-semibold text-[#f7f2ea]"
+              inputClassName="block w-full rounded-2xl border border-[#ddccb9] bg-white px-4 py-3 text-sm"
+            />
+          </div>
+        </div>
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">

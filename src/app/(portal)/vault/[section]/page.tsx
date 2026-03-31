@@ -1,7 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { saveVaultNoteAction, saveVaultPasswordAction, uploadFilesToGoogleDriveAction } from "@/app/actions";
+import { saveVaultNoteAction, saveVaultPasswordAction } from "@/app/actions";
+import { GoogleUploadForm } from "@/components/google-upload-form";
+import { PendingSubmitButton } from "@/components/pending-submit-button";
 import { VaultItemMenu } from "@/components/vault-item-menu";
 import { VoiceNoteRecorder } from "@/components/voice-note-recorder";
 import { requireUser } from "@/lib/auth";
@@ -81,23 +83,14 @@ export default async function VaultSectionPage({ params }: VaultSectionPageProps
                 Upload from here and the files land in your vault library first, then appear in {meta.title} after refresh.
               </p>
             </div>
-            <form action={uploadFilesToGoogleDriveAction} className="grid gap-3 lg:min-w-[360px]">
-              <input type="hidden" name="folderPath" value="" />
-              <input type="hidden" name="redirectTo" value={`/vault/${key}`} />
-              <input
-                name="files"
-                type="file"
-                accept={key === "photos" ? PHOTO_ACCEPT : VIDEO_ACCEPT}
-                multiple
-                className="rounded-2xl border border-[#ddccb9] bg-white px-4 py-3 text-sm"
-              />
-              <button
-                type="submit"
-                className="w-fit rounded-full bg-[#241b14] px-5 py-3 text-sm font-semibold text-[#fff6ed]"
-              >
-                Upload To Vault
-              </button>
-            </form>
+            <GoogleUploadForm
+              folderPath=""
+              redirectTo={`/vault/${key}`}
+              accept={key === "photos" ? PHOTO_ACCEPT : VIDEO_ACCEPT}
+              buttonLabel="Upload To Vault"
+              buttonClassName="w-fit rounded-full bg-[#241b14] px-5 py-3 text-sm font-semibold text-[#fff6ed]"
+              inputClassName="rounded-2xl border border-[#ddccb9] bg-white px-4 py-3 text-sm"
+            />
           </div>
         </section>
       ) : null}
@@ -118,9 +111,11 @@ export default async function VaultSectionPage({ params }: VaultSectionPageProps
                 rows={6}
                 className="rounded-2xl border border-[#ddccb9] bg-white px-4 py-3 outline-none"
               />
-              <button type="submit" className="w-fit rounded-full bg-[#241b14] px-5 py-3 text-sm font-semibold text-[#fff6ed]">
-                Save Note
-              </button>
+              <PendingSubmitButton
+                idleLabel="Save Note"
+                pendingLabel="Saving..."
+                className="w-fit rounded-full bg-[#241b14] px-5 py-3 text-sm font-semibold text-[#fff6ed]"
+              />
             </form>
           </div>
           <VoiceNoteRecorder uploadUrl="/api/notes/audio" redirectTo="/vault/notes" />
@@ -136,9 +131,11 @@ export default async function VaultSectionPage({ params }: VaultSectionPageProps
             <input name="username" placeholder="Username or email" className="rounded-2xl border border-[#ddccb9] bg-white px-4 py-3 outline-none" />
             <input name="password" type="password" placeholder="Password" className="rounded-2xl border border-[#ddccb9] bg-white px-4 py-3 outline-none" />
             <textarea name="note" placeholder="Optional note" rows={4} className="md:col-span-2 rounded-2xl border border-[#ddccb9] bg-white px-4 py-3 outline-none" />
-            <button type="submit" className="w-fit rounded-full bg-[#241b14] px-5 py-3 text-sm font-semibold text-[#fff6ed]">
-              Save Password
-            </button>
+            <PendingSubmitButton
+              idleLabel="Save Password"
+              pendingLabel="Saving..."
+              className="w-fit rounded-full bg-[#241b14] px-5 py-3 text-sm font-semibold text-[#fff6ed]"
+            />
           </form>
         </section>
       ) : null}
@@ -344,9 +341,11 @@ export default async function VaultSectionPage({ params }: VaultSectionPageProps
                     <p className="text-sm text-[#8b6d52]">Updated: {formatDateTime(item.occurredAt)}</p>
                     <div className="flex items-center gap-2">
                       <VaultItemMenu item={item} redirectTo="/vault/notes" align="left" />
-                      <button type="submit" className="rounded-full bg-[#241b14] px-4 py-2 text-sm font-semibold text-[#fff6ed]">
-                        Save Changes
-                      </button>
+                      <PendingSubmitButton
+                        idleLabel="Save Changes"
+                        pendingLabel="Saving..."
+                        className="rounded-full bg-[#241b14] px-4 py-2 text-sm font-semibold text-[#fff6ed]"
+                      />
                     </div>
                   </div>
                 </form>
@@ -370,9 +369,11 @@ export default async function VaultSectionPage({ params }: VaultSectionPageProps
                     </Link>
                   </div>
                 </div>
-                <button type="submit" className="mt-4 rounded-full bg-[#241b14] px-4 py-2 text-sm font-semibold text-[#fff6ed]">
-                  Save Changes
-                </button>
+                <PendingSubmitButton
+                  idleLabel="Save Changes"
+                  pendingLabel="Saving..."
+                  className="mt-4 rounded-full bg-[#241b14] px-4 py-2 text-sm font-semibold text-[#fff6ed]"
+                />
               </form>
             ) : (
               <article

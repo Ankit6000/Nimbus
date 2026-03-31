@@ -42,7 +42,8 @@ export async function POST(request: Request) {
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Delete failed.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    deleteVaultItemAndRelated(userId, itemId);
+    return NextResponse.json({ ok: true, warning: message });
   }
 
   deleteVaultItemAndRelated(userId, itemId);
