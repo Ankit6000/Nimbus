@@ -511,18 +511,15 @@ export async function uploadFilesToConnectedGoogleDrive(
       continue;
     }
 
-    let target = await getGoogleUploadTargetForPathAsync(userId, folderPath);
-
-    if (!folderPath) {
-      target =
-        preferredTargets.find((candidate) => {
+    const target = folderPath
+      ? await getGoogleUploadTargetForPathAsync(userId, folderPath)
+      : preferredTargets.find((candidate) => {
           const totalBytes =
             typeof candidate.total_bytes === "number" && candidate.total_bytes > 0
               ? candidate.total_bytes
               : Number.POSITIVE_INFINITY;
           return totalBytes - candidate.used_bytes >= file.size;
         }) ?? null;
-    }
 
     if (!target?.refresh_token) {
       throw new Error("No connected hidden Google accounts are ready for Drive uploads yet.");
