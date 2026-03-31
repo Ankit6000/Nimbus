@@ -345,21 +345,21 @@ export async function uploadFilesToGoogleDriveAction(formData: FormData) {
     redirect(`${redirectTo}?sync=google-upload-invalid`);
   }
 
-  try {
-    const uploaded = await uploadFilesToConnectedGoogleDrive(user.id, entries, folderPath);
-    await createSyncRunAsync(
-      user.id,
-      "google-upload",
+    try {
+      const uploaded = await uploadFilesToConnectedGoogleDrive(user.id, entries, folderPath);
+      await createSyncRunAsync(
+        user.id,
+        "google-upload",
       uploaded > 0 ? "success" : "skipped",
       `Uploaded ${uploaded} file(s) directly into the connected Google Drive pool.`,
-    );
-    redirect(`${redirectTo}?sync=${uploaded > 0 ? "google-uploaded" : "google-upload-invalid"}`);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Google Drive upload failed.";
-    await createSyncRunAsync(user.id, "google-upload", "error", message);
-    redirect(`${redirectTo}?sync=google-upload-error`);
+      );
+      redirect(`${redirectTo}?sync=${uploaded > 0 ? "google-uploaded" : "google-upload-invalid"}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Google Drive upload failed.";
+      await createSyncRunAsync(user.id, "google-upload", "error", message);
+      redirect(`${redirectTo}?sync=google-upload-error&message=${encodeURIComponent(message)}`);
+    }
   }
-}
 
 export async function createDriveFolderAction(formData: FormData) {
   const user = await requireUser();

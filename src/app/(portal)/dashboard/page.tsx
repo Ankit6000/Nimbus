@@ -210,11 +210,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               </p>
             ) : null}
 
-            {googleUploadError ? (
-              <p className="mt-4 rounded-2xl border border-[#d89a8d] bg-[#f7e1dc] px-4 py-3 text-sm text-[#7b3d31]">
-                Upload failed. Reconnect the assigned storage channel, then try again.
-              </p>
-            ) : null}
+              {googleUploadError ? (
+                <p className="mt-4 rounded-2xl border border-[#d89a8d] bg-[#f7e1dc] px-4 py-3 text-sm text-[#7b3d31]">
+                  {syncMessage || "Upload failed. Reconnect the assigned storage channel, then try again."}
+                </p>
+              ) : null}
 
             <form action={requestGoogleSyncAction} className="mt-5">
               <input type="hidden" name="userId" value={user.id} />
