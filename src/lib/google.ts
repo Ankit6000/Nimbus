@@ -8,6 +8,7 @@ import {
 } from "@/lib/file-types";
 import {
   createVaultAudioNoteRecordAsync,
+  getPreferredGoogleUploadTargetsAsync,
   getVaultItemByIdAsync,
   getDriveFolderMetaByPathAsync,
   createSyncRunDetailedAsync,
@@ -495,27 +496,54 @@ export async function uploadFilesToConnectedGoogleDrive(
   files: File[],
   folderPath = "",
 ) {
-  const target = await getGoogleUploadTargetForPathAsync(userId, folderPath);
-
-  if (!target?.refresh_token) {
-    throw new Error("No connected hidden Google accounts are ready for Drive uploads yet.");
-  }
-
   let uploaded = 0;
-  const auth = createOAuthClient(target.refresh_token);
-  const drive = google.drive({ version: "v3", auth });
-  const parentId = await ensureGoogleFolderPath(userId, target.id, folderPath, auth);
+  const preferredTargets = folderPath ? [] : await getPreferredGoogleUploadTargetsAsync(userId);
+  const driveCache = new Map<
+    string,
+    {
+      drive: ReturnType<typeof google.drive>;
+      parentId: string | null;
+    }
+  >();
 
   for (const file of files) {
     if (!file || file.size === 0) {
       continue;
     }
+
+    let target = await getGoogleUploadTargetForPathAsync(userId, folderPath);
+
+    if (!folderPath) {
+      target =
+        preferredTargets.find((candidate) => {
+          const totalBytes =
+            typeof candidate.total_bytes === "number" && candidate.total_bytes > 0
+              ? candidate.total_bytes
+              : Number.POSITIVE_INFINITY;
+          return totalBytes - candidate.used_bytes >= file.size;
+        }) ?? null;
+    }
+
+    if (!target?.refresh_token) {
+      throw new Error("No connected hidden Google accounts are ready for Drive uploads yet.");
+    }
+
+    let cached = driveCache.get(target.id);
+    if (!cached) {
+      const auth = createOAuthClient(target.refresh_token);
+      cached = {
+        drive: google.drive({ version: "v3", auth }),
+        parentId: await ensureGoogleFolderPath(userId, target.id, folderPath, auth),
+      };
+      driveCache.set(target.id, cached);
+    }
+
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    await drive.files.create({
+    await cached.drive.files.create({
       requestBody: {
         name: file.name,
-        parents: parentId ? [parentId] : undefined,
+        parents: cached.parentId ? [cached.parentId] : undefined,
       },
       media: {
         mimeType: file.type || "application/octet-stream",
