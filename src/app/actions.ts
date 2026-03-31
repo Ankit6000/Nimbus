@@ -206,13 +206,12 @@ export async function deleteManagedMemberAction(formData: FormData) {
     redirect("/admin/dashboard?admin=member-invalid");
   }
 
-  await deleteManagedMemberAsync(userId);
   await createAuditLogAsync({
     actorUserId: admin.id,
-    targetUserId: userId,
     action: "member.delete",
     details: `Deleted member ${userId}.`,
   });
+  await deleteManagedMemberAsync(userId);
   redirect("/admin/dashboard?admin=member-deleted");
 }
 
