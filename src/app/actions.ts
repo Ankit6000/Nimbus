@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { clearSession, createSession, requireAdmin, requireUser } from "@/lib/auth";
 import {
   createGoogleDriveFolder,
@@ -32,6 +33,12 @@ import {
   updateHiddenAccountAssignmentAsync,
   updateManagedMember,
 } from "@/lib/repository";
+
+function rethrowIfRedirect(error: unknown) {
+  if (isRedirectError(error)) {
+    throw error;
+  }
+}
 
 export async function loginAction(formData: FormData) {
   const identifier = String(formData.get("identifier") ?? "").trim().toLowerCase();
@@ -110,6 +117,7 @@ export async function createManagedMemberAction(formData: FormData) {
     });
     redirect("/admin/dashboard?admin=member-created");
   } catch (error) {
+    rethrowIfRedirect(error);
     const message = error instanceof Error ? error.message.toLowerCase() : "";
     const isDuplicate =
       message.includes("unique") ||
@@ -194,7 +202,8 @@ export async function updateManagedMemberAction(formData: FormData) {
       details: `Updated member ${username}.`,
     });
     redirect("/admin/dashboard?admin=member-updated");
-  } catch {
+  } catch (error) {
+    rethrowIfRedirect(error);
     redirect("/admin/dashboard?admin=member-error");
   }
 }
@@ -355,6 +364,7 @@ export async function uploadFilesToGoogleDriveAction(formData: FormData) {
       );
       redirect(`${redirectTo}?sync=${uploaded > 0 ? "google-uploaded" : "google-upload-invalid"}`);
     } catch (error) {
+      rethrowIfRedirect(error);
       const message = error instanceof Error ? error.message : "Google Drive upload failed.";
       await createSyncRunAsync(user.id, "google-upload", "error", message);
       redirect(`${redirectTo}?sync=google-upload-error&message=${encodeURIComponent(message)}`);
@@ -374,7 +384,8 @@ export async function createDriveFolderAction(formData: FormData) {
   try {
     await createGoogleDriveFolder(user.id, folderName, folderPath);
     redirect(`${redirectTo}?drive=folder-created`);
-  } catch {
+  } catch (error) {
+    rethrowIfRedirect(error);
     redirect(`${redirectTo}?drive=folder-error`);
   }
 }
@@ -392,7 +403,8 @@ export async function resetOwnPasswordAction(formData: FormData) {
   try {
     await resetOwnPassword(user.id, currentPassword, nextPassword);
     redirect("/dashboard?sync=password-updated");
-  } catch {
+  } catch (error) {
+    rethrowIfRedirect(error);
     redirect("/dashboard?sync=password-error");
   }
 }
@@ -415,7 +427,8 @@ export async function saveVaultNoteAction(formData: FormData) {
       content,
     });
     redirect("/vault/notes?note=saved");
-  } catch {
+  } catch (error) {
+    rethrowIfRedirect(error);
     redirect("/vault/notes?note=save-error");
   }
 }
@@ -469,7 +482,8 @@ export async function deleteVaultItemAction(formData: FormData) {
     ) {
       await deleteGoogleDriveFile(target.sourceAccountId, fileId);
     }
-  } catch {
+  } catch (error) {
+    rethrowIfRedirect(error);
     redirect(`${redirectTo}?item=delete-error`);
   }
 
