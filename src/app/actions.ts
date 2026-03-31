@@ -22,6 +22,7 @@ import {
   disconnectHiddenGoogleAccountAsync,
   deleteHiddenAccountAssignmentAsync,
   deleteManagedMember,
+  deleteManagedMemberAsync,
   importVaultFiles,
   listManagedMembers,
   queueAppleImport,
@@ -205,8 +206,8 @@ export async function deleteManagedMemberAction(formData: FormData) {
     redirect("/admin/dashboard?admin=member-invalid");
   }
 
-  deleteManagedMember(userId);
-  createAuditLog({
+  await deleteManagedMemberAsync(userId);
+  await createAuditLogAsync({
     actorUserId: admin.id,
     targetUserId: userId,
     action: "member.delete",

@@ -1678,6 +1678,10 @@ export function deleteManagedMember(userId: string) {
   db.prepare("DELETE FROM users WHERE id = ? AND is_admin = 0").run(userId);
 }
 
+export async function deleteManagedMemberAsync(userId: string) {
+  await dbRun("DELETE FROM users WHERE id = ? AND is_admin = 0", [userId]);
+}
+
 export function updateHiddenAccountAssignment(input: {
   id: string;
   label: string;
