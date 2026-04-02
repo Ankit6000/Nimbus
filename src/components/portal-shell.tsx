@@ -40,7 +40,7 @@ export function PortalShell({ user, databaseStatus, children }: PortalShellProps
   const pathname = usePathname();
   const activePath = normalizePath(pathname || "/dashboard");
   const activeClass =
-    "border border-[#5c4334] bg-[#2f2118] text-[#fffaf2] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]";
+    "border border-[#dcc3ae] bg-[#f1e3d3] text-[#241b14] shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]";
   const idleClass = "bg-[#f5ecdf] text-[#3b2d20] hover:bg-[#ecdcc8]";
 
   return (

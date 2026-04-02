@@ -17,7 +17,15 @@ export function PendingLink({ href, className, children, active = false }: Pendi
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
-    setPending(false);
+    if (!pending) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setPending(false);
+    }, 220);
+
+    return () => window.clearTimeout(timeout);
   }, [pathname, searchParams]);
 
   function handleClick(event: MouseEvent<HTMLAnchorElement>) {
