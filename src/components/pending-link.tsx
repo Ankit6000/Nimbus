@@ -8,9 +8,10 @@ type PendingLinkProps = {
   href: string;
   className: string;
   children: ReactNode;
+  active?: boolean;
 };
 
-export function PendingLink({ href, className, children }: PendingLinkProps) {
+export function PendingLink({ href, className, children, active = false }: PendingLinkProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [pending, setPending] = useState(false);
@@ -35,12 +36,18 @@ export function PendingLink({ href, className, children }: PendingLinkProps) {
   }
 
   return (
-    <Link href={href} onClick={handleClick} className={className} aria-busy={pending}>
-      <span className="inline-flex items-center gap-2">
+    <Link
+      href={href}
+      onClick={handleClick}
+      className={className}
+      aria-busy={pending}
+      aria-current={active ? "page" : undefined}
+    >
+      <span className="inline-flex items-center gap-2 text-inherit">
         {pending ? (
           <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" />
         ) : null}
-        <span>{children}</span>
+        <span className="text-inherit">{children}</span>
       </span>
     </Link>
   );

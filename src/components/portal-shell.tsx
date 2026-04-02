@@ -24,14 +24,24 @@ const otherSectionOrder: SectionKey[] = [
 
 type PortalShellProps = {
   user: PortalUser;
-  currentPath: string;
   databaseStatus: DatabaseRuntimeStatus;
   children: ReactNode;
 };
 
-export function PortalShell({ user, currentPath, databaseStatus, children }: PortalShellProps) {
+function normalizePath(path: string) {
+  if (!path || path === "/") {
+    return path || "/";
+  }
+
+  return path.endsWith("/") ? path.slice(0, -1) : path;
+}
+
+export function PortalShell({ user, databaseStatus, children }: PortalShellProps) {
   const pathname = usePathname();
-  const activePath = pathname || currentPath;
+  const activePath = normalizePath(pathname || "/dashboard");
+  const activeClass =
+    "border border-[#5c4334] bg-[#2f2118] text-[#fffaf2] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]";
+  const idleClass = "bg-[#f5ecdf] text-[#3b2d20] hover:bg-[#ecdcc8]";
 
   return (
     <div className="h-screen overflow-hidden bg-transparent px-4 py-4 sm:px-6 lg:px-8">
@@ -71,36 +81,35 @@ export function PortalShell({ user, currentPath, databaseStatus, children }: Por
             <nav className="mt-3 grid gap-1.5">
               <PendingLink
                 href="/dashboard"
+                active={activePath === "/dashboard"}
                 className={`rounded-2xl px-3 py-2.5 text-sm font-medium transition ${
-                  activePath === "/dashboard"
-                    ? "bg-[#2f2118] text-[#fffaf2] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
-                    : "bg-[#f5ecdf] text-[#3b2d20] hover:bg-[#ecdcc8]"
+                  activePath === "/dashboard" ? activeClass : idleClass
                 }`}
               >
                 Dashboard
               </PendingLink>
               <PendingLink
                 href="/activity"
+                active={activePath === "/activity"}
                 className={`rounded-2xl px-3 py-2.5 text-sm font-medium transition ${
-                  activePath === "/activity"
-                    ? "bg-[#2f2118] text-[#fffaf2] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
-                    : "bg-[#f5ecdf] text-[#3b2d20] hover:bg-[#ecdcc8]"
+                  activePath === "/activity" ? activeClass : idleClass
                 }`}
               >
                 Recent Activity
               </PendingLink>
               {mainSectionOrder.map((key) => {
                 const href = `/vault/${key}`;
-                const active = activePath === href || activePath.startsWith(`${href}/`);
+                const normalizedHref = normalizePath(href);
+                const active =
+                  activePath === normalizedHref || activePath.startsWith(`${normalizedHref}/`);
 
                 return (
                   <PendingLink
                     key={key}
                     href={href}
+                    active={active}
                     className={`rounded-2xl px-3 py-2.5 text-sm font-medium transition ${
-                      active
-                        ? "bg-[#2f2118] text-[#fffaf2] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
-                        : "bg-[#f5ecdf] text-[#3b2d20] hover:bg-[#ecdcc8]"
+                      active ? activeClass : idleClass
                     }`}
                   >
                     {sectionMeta[key].title}
@@ -112,16 +121,17 @@ export function PortalShell({ user, currentPath, databaseStatus, children }: Por
               </p>
               {otherSectionOrder.map((key) => {
                 const href = `/vault/${key}`;
-                const active = activePath === href || activePath.startsWith(`${href}/`);
+                const normalizedHref = normalizePath(href);
+                const active =
+                  activePath === normalizedHref || activePath.startsWith(`${normalizedHref}/`);
 
                 return (
                   <PendingLink
                     key={key}
                     href={href}
+                    active={active}
                     className={`rounded-2xl px-3 py-2.5 text-sm font-medium transition ${
-                      active
-                        ? "bg-[#2f2118] text-[#fffaf2] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
-                        : "bg-[#f5ecdf] text-[#3b2d20] hover:bg-[#ecdcc8]"
+                      active ? activeClass : idleClass
                     }`}
                   >
                     {sectionMeta[key].title}

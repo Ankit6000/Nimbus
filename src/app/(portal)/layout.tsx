@@ -11,7 +11,7 @@ export default async function PortalLayout({
   const databaseStatus = getDatabaseRuntimeStatus();
 
   return (
-    <PortalShell user={user} currentPath="/dashboard" databaseStatus={databaseStatus}>
+    <PortalShell user={user} databaseStatus={databaseStatus}>
       {children}
     </PortalShell>
   );
