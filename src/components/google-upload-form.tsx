@@ -26,6 +26,82 @@ export function GoogleUploadForm({
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  function createUploadBatches(files: File[]) {
+    const MAX_FILES_PER_BATCH = 12;
+    const MAX_BYTES_PER_BATCH = 18 * 1024 * 1024;
+    const batches: File[][] = [];
+    let currentBatch: File[] = [];
+    let currentBytes = 0;
+
+    for (const file of files) {
+      const wouldExceedCount = currentBatch.length >= MAX_FILES_PER_BATCH;
+      const wouldExceedBytes =
+        currentBatch.length > 0 && currentBytes + file.size > MAX_BYTES_PER_BATCH;
+
+      if (wouldExceedCount || wouldExceedBytes) {
+        batches.push(currentBatch);
+        currentBatch = [];
+        currentBytes = 0;
+      }
+
+      currentBatch.push(file);
+      currentBytes += file.size;
+    }
+
+    if (currentBatch.length > 0) {
+      batches.push(currentBatch);
+    }
+
+    return batches;
+  }
+
+  async function uploadBatch(batchFiles: File[], batchIndex: number, batchCount: number, totalBytes: number, uploadedBytesSoFar: number) {
+    const formData = new FormData();
+    formData.set("folderPath", folderPath);
+    formData.set("redirectTo", redirectTo);
+    for (const file of batchFiles) {
+      formData.append("files", file);
+    }
+
+    const batchBytes = batchFiles.reduce((sum, file) => sum + file.size, 0);
+
+    const response = await new Promise<XMLHttpRequest>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/vault/upload");
+      xhr.responseType = "json";
+      xhr.upload.onprogress = (progressEvent) => {
+        if (!progressEvent.lengthComputable) {
+          return;
+        }
+
+        const batchLoaded = Math.min(progressEvent.loaded, batchBytes);
+        const totalLoaded = uploadedBytesSoFar + batchLoaded;
+        setProgress(Math.min(100, Math.round((totalLoaded / totalBytes) * 100)));
+      };
+      xhr.onload = () => resolve(xhr);
+      xhr.onerror = () => reject(new Error(`Upload batch ${batchIndex + 1} of ${batchCount} failed.`));
+      xhr.send(formData);
+    });
+
+    if (response.status < 200 || response.status >= 300) {
+      const payload =
+        typeof response.response === "object" && response.response
+          ? (response.response as { error?: string })
+          : null;
+      throw new Error(payload?.error ?? `Upload batch ${batchIndex + 1} failed.`);
+    }
+
+    const payload =
+      typeof response.response === "object" && response.response
+        ? (response.response as { redirectTo?: string })
+        : null;
+
+    return {
+      redirectTo: payload?.redirectTo || redirectTo,
+      uploadedBytes: uploadedBytesSoFar + batchBytes,
+    };
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -37,55 +113,33 @@ export function GoogleUploadForm({
     setUploading(true);
     setProgress(0);
     setError(null);
+    const batches = createUploadBatches(files);
+    const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+    let uploadedBytes = 0;
+    let finalRedirectTo = redirectTo;
 
-    const formData = new FormData();
-    formData.set("folderPath", folderPath);
-    formData.set("redirectTo", redirectTo);
-    for (const file of files) {
-      formData.append("files", file);
-    }
-
-    const response = await new Promise<XMLHttpRequest>((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", "/api/vault/upload");
-      xhr.responseType = "json";
-      xhr.upload.onprogress = (progressEvent) => {
-        if (progressEvent.lengthComputable) {
-          setProgress(Math.min(100, Math.round((progressEvent.loaded / progressEvent.total) * 100)));
-        }
-      };
-      xhr.onload = () => resolve(xhr);
-      xhr.onerror = () => reject(new Error("Network error"));
-      xhr.send(formData);
-    }).catch((uploadError) => {
+    try {
+      for (const [index, batch] of batches.entries()) {
+        const result = await uploadBatch(
+          batch,
+          index,
+          batches.length,
+          totalBytes,
+          uploadedBytes,
+        );
+        uploadedBytes = result.uploadedBytes;
+        finalRedirectTo = result.redirectTo;
+        setProgress(Math.min(100, Math.round((uploadedBytes / totalBytes) * 100)));
+      }
+    } catch (uploadError) {
       setUploading(false);
       setProgress(null);
       setError(uploadError instanceof Error ? uploadError.message : "Upload failed.");
-      return null;
-    });
-
-    if (!response) {
       return;
     }
-
-    if (response.status < 200 || response.status >= 300) {
-      const payload =
-        typeof response.response === "object" && response.response
-          ? (response.response as { error?: string })
-          : null;
-      setUploading(false);
-      setProgress(null);
-      setError(payload?.error ?? "Upload failed.");
-      return;
-    }
-
-    const payload =
-      typeof response.response === "object" && response.response
-        ? (response.response as { redirectTo?: string })
-        : null;
 
     setProgress(100);
-    window.location.assign(payload?.redirectTo || redirectTo);
+    window.location.assign(finalRedirectTo);
   }
 
   return (
