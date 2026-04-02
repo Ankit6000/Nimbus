@@ -405,7 +405,8 @@ export async function resetOwnPasswordAction(formData: FormData) {
     redirect("/dashboard?sync=password-updated");
   } catch (error) {
     rethrowIfRedirect(error);
-    redirect("/dashboard?sync=password-error");
+    const message = error instanceof Error ? error.message : "Password reset failed.";
+    redirect(`/dashboard?sync=password-error&message=${encodeURIComponent(message)}`);
   }
 }
 

@@ -1779,7 +1779,7 @@ export async function resetManagedMemberPassword(userId: string, password: strin
 }
 
 export async function resetOwnPassword(userId: string, currentPassword: string, nextPassword: string) {
-  const user = getUserAuthRecord(userId);
+  const user = await getUserAuthRecordAsync(userId);
 
   if (!user) {
     throw new Error("Account not found.");
@@ -1791,15 +1791,14 @@ export async function resetOwnPassword(userId: string, currentPassword: string, 
   }
 
   const passwordHash = await bcrypt.hash(nextPassword, 10);
-  getDb()
-    .prepare(
-      `
-        UPDATE users
-        SET password_hash = ?
-        WHERE id = ?
-      `,
-    )
-    .run(passwordHash, userId);
+  await dbRun(
+    `
+      UPDATE users
+      SET password_hash = ?
+      WHERE id = ?
+    `,
+    [passwordHash, userId],
+  );
 }
 
 export function createAppleAccountLink(input: {

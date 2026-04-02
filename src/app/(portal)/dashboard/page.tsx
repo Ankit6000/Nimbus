@@ -256,7 +256,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
             {passwordError ? (
               <p className="mt-4 rounded-2xl border border-[#d89a8d] bg-[#f7e1dc] px-4 py-3 text-sm text-[#7b3d31]">
-                Password reset failed. Double-check your current password and try again.
+                {syncMessage || "Password reset failed. Double-check your current password and try again."}
               </p>
             ) : null}
 
