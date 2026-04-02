@@ -2,6 +2,15 @@
 
 import { useRef, useState } from "react";
 
+type UploadQueueItem = {
+  id: string;
+  file: File;
+  status: "queued" | "uploading" | "retrying" | "success" | "error";
+  attempts: number;
+  progress: number;
+  error?: string;
+};
+
 type GoogleUploadFormProps = {
   folderPath: string;
   redirectTo: string;
@@ -25,46 +34,24 @@ export function GoogleUploadForm({
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [queueItems, setQueueItems] = useState<UploadQueueItem[]>([]);
 
-  function createUploadBatches(files: File[]) {
-    // Keep each request comfortably below Vercel's request-body ceiling.
-    const MAX_FILES_PER_BATCH = 4;
-    const MAX_BYTES_PER_BATCH = 3.5 * 1024 * 1024;
-    const batches: File[][] = [];
-    let currentBatch: File[] = [];
-    let currentBytes = 0;
-
-    for (const file of files) {
-      const wouldExceedCount = currentBatch.length >= MAX_FILES_PER_BATCH;
-      const wouldExceedBytes =
-        currentBatch.length > 0 && currentBytes + file.size > MAX_BYTES_PER_BATCH;
-
-      if (wouldExceedCount || wouldExceedBytes) {
-        batches.push(currentBatch);
-        currentBatch = [];
-        currentBytes = 0;
-      }
-
-      currentBatch.push(file);
-      currentBytes += file.size;
-    }
-
-    if (currentBatch.length > 0) {
-      batches.push(currentBatch);
-    }
-
-    return batches;
+  function createQueueItems(files: File[]) {
+    return files.map((file, index) => ({
+      id: `${file.name}-${file.size}-${index}-${crypto.randomUUID()}`,
+      file,
+      status: "queued" as const,
+      attempts: 0,
+      progress: 0,
+    }));
   }
 
-  async function uploadBatch(batchFiles: File[], batchIndex: number, batchCount: number, totalBytes: number, uploadedBytesSoFar: number) {
+  async function uploadSingleFile(item: UploadQueueItem) {
     const formData = new FormData();
     formData.set("folderPath", folderPath);
     formData.set("redirectTo", redirectTo);
-    for (const file of batchFiles) {
-      formData.append("files", file);
-    }
-
-    const batchBytes = batchFiles.reduce((sum, file) => sum + file.size, 0);
+    formData.append("files", item.file);
 
     const response = await new Promise<XMLHttpRequest>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
@@ -75,24 +62,36 @@ export function GoogleUploadForm({
           return;
         }
 
-        const batchLoaded = Math.min(progressEvent.loaded, batchBytes);
-        const totalLoaded = uploadedBytesSoFar + batchLoaded;
-        setProgress(Math.min(100, Math.round((totalLoaded / totalBytes) * 100)));
+        const itemProgress = Math.min(
+          100,
+          Math.round((progressEvent.loaded / progressEvent.total) * 100),
+        );
+
+        setQueueItems((current) =>
+          current.map((entry) =>
+            entry.id === item.id ? { ...entry, progress: itemProgress } : entry,
+          ),
+        );
       };
       xhr.onload = () => resolve(xhr);
-      xhr.onerror = () => reject(new Error(`Upload batch ${batchIndex + 1} of ${batchCount} failed.`));
+      xhr.onerror = () =>
+        reject(new Error(`Network error while uploading ${item.file.name}.`));
       xhr.send(formData);
     });
 
     if (response.status < 200 || response.status >= 300) {
       if (response.status === 413) {
-        throw new Error("Selected files are still too large for one upload chunk. Try fewer or smaller files.");
+        throw new Error(
+          `${item.file.name} is still too large for one Vercel upload request.`,
+        );
       }
+
       const payload =
         typeof response.response === "object" && response.response
           ? (response.response as { error?: string })
           : null;
-      throw new Error(payload?.error ?? `Upload batch ${batchIndex + 1} failed.`);
+
+      throw new Error(payload?.error ?? `Upload failed for ${item.file.name}.`);
     }
 
     const payload =
@@ -102,8 +101,140 @@ export function GoogleUploadForm({
 
     return {
       redirectTo: payload?.redirectTo || redirectTo,
-      uploadedBytes: uploadedBytesSoFar + batchBytes,
     };
+  }
+
+  function updateOverallProgress(nextItems: UploadQueueItem[]) {
+    const completedCount = nextItems.filter(
+      (item) => item.status === "success" || item.status === "error",
+    ).length;
+    const inFlightProgress = nextItems
+      .filter((item) => item.status === "uploading" || item.status === "retrying")
+      .reduce((sum, item) => sum + item.progress, 0);
+
+    const total = nextItems.length * 100;
+    const current = completedCount * 100 + inFlightProgress;
+    setProgress(total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0);
+  }
+
+  async function runUploadQueue(items: UploadQueueItem[]) {
+    const MAX_CONCURRENT_UPLOADS = 2;
+    const MAX_RETRIES = 2;
+    let nextIndex = 0;
+    let finalRedirectTo = redirectTo;
+    let successCount = 0;
+    let failedCount = 0;
+
+    const worker = async () => {
+      while (true) {
+        const currentIndex = nextIndex;
+        nextIndex += 1;
+
+        if (currentIndex >= items.length) {
+          return;
+        }
+
+        const item = items[currentIndex];
+
+        for (let attempt = 1; attempt <= MAX_RETRIES + 1; attempt += 1) {
+          setQueueItems((current) => {
+            const nextItems = current.map((entry) =>
+              entry.id === item.id
+                ? {
+                    ...entry,
+                    attempts: attempt,
+                    progress: 0,
+                    error: undefined,
+                    status: (attempt === 1 ? "uploading" : "retrying") as UploadQueueItem["status"],
+                  }
+                : entry,
+            );
+            updateOverallProgress(nextItems);
+            return nextItems;
+          });
+
+          try {
+            const result = await uploadSingleFile(item);
+            finalRedirectTo = result.redirectTo;
+            setQueueItems((current) => {
+              const nextItems = current.map((entry) =>
+                entry.id === item.id
+                  ? { ...entry, status: "success" as const, progress: 100, error: undefined }
+                  : entry,
+              );
+              updateOverallProgress(nextItems);
+              return nextItems;
+            });
+            successCount += 1;
+            break;
+          } catch (uploadError) {
+            const message =
+              uploadError instanceof Error ? uploadError.message : "Upload failed.";
+
+            if (attempt <= MAX_RETRIES) {
+              setQueueItems((current) => {
+                const nextItems = current.map((entry) =>
+                  entry.id === item.id
+                    ? { ...entry, status: "retrying" as const, error: `Retrying... ${message}` }
+                    : entry,
+                );
+                updateOverallProgress(nextItems);
+                return nextItems;
+              });
+              await new Promise((resolve) => setTimeout(resolve, 700 * attempt));
+              continue;
+            }
+
+            setQueueItems((current) => {
+              const nextItems = current.map((entry) =>
+                entry.id === item.id
+                  ? { ...entry, status: "error" as const, progress: 0, error: message }
+                  : entry,
+              );
+              updateOverallProgress(nextItems);
+              return nextItems;
+            });
+            failedCount += 1;
+          }
+        }
+      }
+    };
+
+    await Promise.all(
+      Array.from({ length: Math.min(MAX_CONCURRENT_UPLOADS, items.length) }, () => worker()),
+    );
+
+    setUploading(false);
+    setQueueItems((current) => {
+      setSummary(
+        failedCount > 0
+          ? `${successCount} uploaded, ${failedCount} failed.`
+          : `Uploaded ${successCount} file${successCount === 1 ? "" : "s"}.`,
+      );
+      return current;
+    });
+
+    if (failedCount === 0) {
+      window.location.assign(finalRedirectTo);
+    }
+  }
+
+  async function startUpload(files: File[]) {
+    setUploading(true);
+    setProgress(0);
+    setError(null);
+    setSummary(null);
+
+    const items = createQueueItems(files);
+    setQueueItems(items);
+
+    try {
+      await runUploadQueue(items);
+    } catch (uploadError) {
+      setUploading(false);
+      setProgress(null);
+      setError(uploadError instanceof Error ? uploadError.message : "Upload failed.");
+    }
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -114,36 +245,23 @@ export function GoogleUploadForm({
       return;
     }
 
-    setUploading(true);
-    setProgress(0);
-    setError(null);
-    const batches = createUploadBatches(files);
-    const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
-    let uploadedBytes = 0;
-    let finalRedirectTo = redirectTo;
+    await startUpload(files);
+  }
 
-    try {
-      for (const [index, batch] of batches.entries()) {
-        const result = await uploadBatch(
-          batch,
-          index,
-          batches.length,
-          totalBytes,
-          uploadedBytes,
-        );
-        uploadedBytes = result.uploadedBytes;
-        finalRedirectTo = result.redirectTo;
-        setProgress(Math.min(100, Math.round((uploadedBytes / totalBytes) * 100)));
-      }
-    } catch (uploadError) {
-      setUploading(false);
-      setProgress(null);
-      setError(uploadError instanceof Error ? uploadError.message : "Upload failed.");
+  async function handleRetryFailed() {
+    if (uploading) {
       return;
     }
 
-    setProgress(100);
-    window.location.assign(finalRedirectTo);
+    const failedFiles = queueItems
+      .filter((item) => item.status === "error")
+      .map((item) => item.file);
+
+    if (!failedFiles.length) {
+      return;
+    }
+
+    await startUpload(failedFiles);
   }
 
   return (
@@ -166,11 +284,64 @@ export function GoogleUploadForm({
               style={{ width: `${progress ?? 0}%` }}
             />
           </div>
-          <p className="text-xs text-[#8b6d52]">{progress ?? 0}% uploaded</p>
+          <p className="text-xs text-[#8b6d52]">{progress ?? 0}% processed</p>
         </div>
       ) : null}
 
       {error ? <p className="text-sm text-[#b54222]">{error}</p> : null}
+      {summary ? <p className="text-sm text-[#5b4635]">{summary}</p> : null}
+
+      {queueItems.length > 0 ? (
+        <div className="grid gap-2 rounded-2xl border border-[#ead9c8] bg-[#fffaf2] p-3">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#8b6d52]">
+              Upload Queue
+            </p>
+            {queueItems.some((item) => item.status === "error") && !uploading ? (
+              <button
+                type="button"
+                onClick={handleRetryFailed}
+                className="rounded-full border border-[#d8c0ae] bg-white px-3 py-1.5 text-xs font-semibold text-[#3b2d20]"
+              >
+                Retry Failed
+              </button>
+            ) : null}
+          </div>
+          <div className="grid gap-2">
+            {queueItems.map((item) => (
+              <div key={item.id} className="rounded-2xl bg-[#f4ebe0] px-3 py-2.5 text-sm text-[#3b2d20]">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="min-w-0 break-all font-medium">{item.file.name}</p>
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
+                      item.status === "success"
+                        ? "bg-[#d8ecdf] text-[#335443]"
+                        : item.status === "error"
+                          ? "bg-[#f7e1dc] text-[#7b3d31]"
+                          : item.status === "retrying"
+                            ? "bg-[#f5ecdf] text-[#7a5a3e]"
+                            : "bg-[#ede3d6] text-[#6c5440]"
+                    }`}
+                  >
+                    {item.status}
+                  </span>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-3 text-xs text-[#7a5a3e]">
+                  <span>{Math.round(item.file.size / 1024)} KB</span>
+                  <span>
+                    {item.status === "success"
+                      ? "Done"
+                      : item.status === "error"
+                        ? "Failed"
+                        : `${item.progress}%`}
+                  </span>
+                </div>
+                {item.error ? <p className="mt-2 text-xs text-[#b54222]">{item.error}</p> : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <button
         type="submit"
