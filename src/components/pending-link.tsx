@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { MouseEvent, ReactNode, useEffect, useState } from "react";
+import { emitNavigationStart } from "@/components/navigation-progress";
 
 type PendingLinkProps = {
   href: string;
@@ -40,6 +41,7 @@ export function PendingLink({ href, className, children, active = false }: Pendi
       return;
     }
 
+    emitNavigationStart();
     setPending(true);
   }
 

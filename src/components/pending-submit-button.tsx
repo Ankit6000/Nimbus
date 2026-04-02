@@ -2,6 +2,8 @@
 
 import { ReactNode } from "react";
 import { useFormStatus } from "react-dom";
+import { useEffect } from "react";
+import { emitNavigationStart } from "@/components/navigation-progress";
 
 type PendingSubmitButtonProps = {
   idleLabel: ReactNode;
@@ -15,6 +17,12 @@ export function PendingSubmitButton({
   className = "",
 }: PendingSubmitButtonProps) {
   const { pending } = useFormStatus();
+
+  useEffect(() => {
+    if (pending) {
+      emitNavigationStart();
+    }
+  }, [pending]);
 
   return (
     <button
