@@ -27,8 +27,9 @@ export function GoogleUploadForm({
   const [error, setError] = useState<string | null>(null);
 
   function createUploadBatches(files: File[]) {
-    const MAX_FILES_PER_BATCH = 12;
-    const MAX_BYTES_PER_BATCH = 18 * 1024 * 1024;
+    // Keep each request comfortably below Vercel's request-body ceiling.
+    const MAX_FILES_PER_BATCH = 4;
+    const MAX_BYTES_PER_BATCH = 3.5 * 1024 * 1024;
     const batches: File[][] = [];
     let currentBatch: File[] = [];
     let currentBytes = 0;
@@ -84,6 +85,9 @@ export function GoogleUploadForm({
     });
 
     if (response.status < 200 || response.status >= 300) {
+      if (response.status === 413) {
+        throw new Error("Selected files are still too large for one upload chunk. Try fewer or smaller files.");
+      }
       const payload =
         typeof response.response === "object" && response.response
           ? (response.response as { error?: string })
