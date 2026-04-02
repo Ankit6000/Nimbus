@@ -36,6 +36,7 @@ export function GoogleUploadForm({
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
   const [queueItems, setQueueItems] = useState<UploadQueueItem[]>([]);
+  const [queueOpen, setQueueOpen] = useState(false);
 
   function createQueueItems(files: File[]) {
     return files.map((file, index) => ({
@@ -118,7 +119,7 @@ export function GoogleUploadForm({
   }
 
   async function runUploadQueue(items: UploadQueueItem[]) {
-    const MAX_CONCURRENT_UPLOADS = 2;
+    const MAX_CONCURRENT_UPLOADS = 4;
     const MAX_RETRIES = 2;
     let nextIndex = 0;
     let finalRedirectTo = redirectTo;
@@ -224,6 +225,7 @@ export function GoogleUploadForm({
     setProgress(0);
     setError(null);
     setSummary(null);
+    setQueueOpen(true);
 
     const items = createQueueItems(files);
     setQueueItems(items);
@@ -294,52 +296,66 @@ export function GoogleUploadForm({
       {queueItems.length > 0 ? (
         <div className="grid gap-2 rounded-2xl border border-[#ead9c8] bg-[#fffaf2] p-3">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#8b6d52]">
-              Upload Queue
-            </p>
-            {queueItems.some((item) => item.status === "error") && !uploading ? (
-              <button
-                type="button"
-                onClick={handleRetryFailed}
-                className="rounded-full border border-[#d8c0ae] bg-white px-3 py-1.5 text-xs font-semibold text-[#3b2d20]"
-              >
-                Retry Failed
-              </button>
-            ) : null}
+            <button
+              type="button"
+              onClick={() => setQueueOpen((current) => !current)}
+              className="inline-flex min-w-0 items-center gap-2 text-left text-xs font-semibold uppercase tracking-[0.2em] text-[#8b6d52]"
+            >
+              <span>{queueOpen ? "Hide" : "Show"} Upload Queue</span>
+              <span className="rounded-full bg-[#f4ebe0] px-2 py-1 text-[10px] text-[#6c5440]">
+                {queueItems.filter((item) => item.status === "success").length}/{queueItems.length}
+              </span>
+            </button>
+            <div className="flex items-center gap-2">
+              {queueItems.some((item) => item.status === "error") && !uploading ? (
+                <button
+                  type="button"
+                  onClick={handleRetryFailed}
+                  className="rounded-full border border-[#d8c0ae] bg-white px-3 py-1.5 text-xs font-semibold text-[#3b2d20]"
+                >
+                  Retry Failed
+                </button>
+              ) : null}
+              <span className="text-[10px] uppercase tracking-[0.16em] text-[#8b6d52]">
+                {uploading ? "Live" : "Ready"}
+              </span>
+            </div>
           </div>
-          <div className="grid gap-2">
-            {queueItems.map((item) => (
-              <div key={item.id} className="rounded-2xl bg-[#f4ebe0] px-3 py-2.5 text-sm text-[#3b2d20]">
-                <div className="flex items-start justify-between gap-3">
-                  <p className="min-w-0 break-all font-medium">{item.file.name}</p>
-                  <span
-                    className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
-                      item.status === "success"
-                        ? "bg-[#d8ecdf] text-[#335443]"
+          {queueOpen ? (
+            <div className="grid gap-2">
+              {queueItems.map((item) => (
+                <div key={item.id} className="rounded-2xl bg-[#f4ebe0] px-3 py-2.5 text-sm text-[#3b2d20]">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="min-w-0 break-all font-medium">{item.file.name}</p>
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
+                        item.status === "success"
+                          ? "bg-[#d8ecdf] text-[#335443]"
+                          : item.status === "error"
+                            ? "bg-[#f7e1dc] text-[#7b3d31]"
+                            : item.status === "retrying"
+                              ? "bg-[#f5ecdf] text-[#7a5a3e]"
+                              : "bg-[#ede3d6] text-[#6c5440]"
+                      }`}
+                    >
+                      {item.status}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-3 text-xs text-[#7a5a3e]">
+                    <span>{Math.round(item.file.size / 1024)} KB</span>
+                    <span>
+                      {item.status === "success"
+                        ? "Done"
                         : item.status === "error"
-                          ? "bg-[#f7e1dc] text-[#7b3d31]"
-                          : item.status === "retrying"
-                            ? "bg-[#f5ecdf] text-[#7a5a3e]"
-                            : "bg-[#ede3d6] text-[#6c5440]"
-                    }`}
-                  >
-                    {item.status}
-                  </span>
+                          ? "Failed"
+                          : `${item.progress}%`}
+                    </span>
+                  </div>
+                  {item.error ? <p className="mt-2 text-xs text-[#b54222]">{item.error}</p> : null}
                 </div>
-                <div className="mt-2 flex items-center justify-between gap-3 text-xs text-[#7a5a3e]">
-                  <span>{Math.round(item.file.size / 1024)} KB</span>
-                  <span>
-                    {item.status === "success"
-                      ? "Done"
-                      : item.status === "error"
-                        ? "Failed"
-                        : `${item.progress}%`}
-                  </span>
-                </div>
-                {item.error ? <p className="mt-2 text-xs text-[#b54222]">{item.error}</p> : null}
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
