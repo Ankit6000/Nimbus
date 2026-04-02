@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 const START_EVENT = "nimbus:navigation-start";
@@ -13,7 +13,6 @@ export function emitNavigationStart() {
 
 export function NavigationProgress() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const [visible, setVisible] = useState(false);
   const [progress, setProgress] = useState(0);
   const finishTimeoutRef = useRef<number | null>(null);
@@ -81,7 +80,7 @@ export function NavigationProgress() {
         finishTimeoutRef.current = null;
       }
     };
-  }, [pathname, searchParams, visible]);
+  }, [pathname, visible]);
 
   return (
     <div

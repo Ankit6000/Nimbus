@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { MouseEvent, ReactNode, useEffect, useState } from "react";
 import { emitNavigationStart } from "@/components/navigation-progress";
 
@@ -14,7 +14,6 @@ type PendingLinkProps = {
 
 export function PendingLink({ href, className, children, active = false }: PendingLinkProps) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
@@ -27,7 +26,7 @@ export function PendingLink({ href, className, children, active = false }: Pendi
     }, 220);
 
     return () => window.clearTimeout(timeout);
-  }, [pathname, searchParams]);
+  }, [pathname]);
 
   function handleClick(event: MouseEvent<HTMLAnchorElement>) {
     if (
