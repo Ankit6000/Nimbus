@@ -84,7 +84,7 @@ export default async function DriveRootPage({ searchParams }: DriveRootPageProps
               <div className="rounded-2xl bg-[#f4ebe0] px-4 py-4 text-sm text-[#5b4635]">No folders in root yet.</div>
             ) : (
               folders.map((folder) => (
-                <article key={folder.id} className="relative rounded-2xl bg-[#f4ebe0] px-4 py-4 text-sm font-semibold text-[#241b14] transition hover:bg-[#eadfce]">
+                <article key={folder.id} data-item-id={folder.id} className="relative rounded-2xl bg-[#f4ebe0] px-4 py-4 text-sm font-semibold text-[#241b14] transition hover:bg-[#eadfce]">
                   <div className="absolute right-3 top-3">
                     <VaultItemMenu
                       item={{
@@ -119,7 +119,7 @@ export default async function DriveRootPage({ searchParams }: DriveRootPageProps
               <div className="rounded-2xl bg-[#f4ebe0] px-4 py-4 text-sm text-[#5b4635]">No root files yet.</div>
             ) : (
               files.map((item) => (
-                <article key={item.id} className="relative rounded-2xl bg-[#f4ebe0] px-4 py-4 text-sm text-[#5b4635] transition hover:bg-[#eadfce]">
+                <article key={item.id} data-item-id={item.id} className="relative rounded-2xl bg-[#f4ebe0] px-4 py-4 text-sm text-[#5b4635] transition hover:bg-[#eadfce]">
                   <div className="absolute right-3 top-3">
                     <VaultItemMenu item={item} redirectTo="/vault/drive" />
                   </div>

@@ -2,8 +2,9 @@ import Link from "next/link";
 import {
   requestGoogleSyncAction,
   resetOwnPasswordAction,
-  uploadFilesToGoogleDriveAction,
 } from "@/app/actions";
+import { GoogleUploadForm } from "@/components/google-upload-form";
+import { PendingSubmitButton } from "@/components/pending-submit-button";
 import { requireUser } from "@/lib/auth";
 import { sectionMeta, SectionKey } from "@/lib/data";
 import { PHOTO_VIDEO_ACCEPT } from "@/lib/file-types";
@@ -218,12 +219,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
             <form action={requestGoogleSyncAction} className="mt-5">
               <input type="hidden" name="userId" value={user.id} />
-              <button
-                type="submit"
+              <PendingSubmitButton
+                idleLabel="Refresh Vault"
+                pendingLabel="Refreshing..."
                 className="rounded-full bg-[#436b5c] px-5 py-3 text-sm font-semibold text-[#f7f2ea] transition hover:bg-[#355548]"
-              >
-                Refresh Vault
-              </button>
+              />
             </form>
 
             <div className="mt-5 rounded-2xl bg-[#f7f0e7] px-4 py-4 text-sm text-[#5b4635]">
@@ -279,12 +279,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 placeholder="Confirm new password"
                 className="rounded-2xl border border-[#d8c2ae] bg-[#f7f0e7] px-4 py-3 text-sm text-[#241b14] outline-none"
               />
-              <button
-                type="submit"
+              <PendingSubmitButton
+                idleLabel="Update Password"
+                pendingLabel="Updating..."
                 className="w-fit rounded-full bg-[#436b5c] px-5 py-3 text-sm font-semibold text-[#f7f2ea] transition hover:bg-[#355548]"
-              >
-                Update Password
-              </button>
+              />
             </form>
           </div>
         </div>
@@ -302,48 +301,42 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           </p>
 
           <div className="mt-5 grid gap-4 lg:grid-cols-2">
-            <form action={uploadFilesToGoogleDriveAction} className="rounded-2xl bg-[#f7f0e7] p-4">
+            <div className="rounded-2xl bg-[#f7f0e7] p-4">
               <p className="font-heading text-2xl font-semibold text-[#241b14]">
                 Upload Photos And Videos
               </p>
               <p className="mt-2 text-sm text-[#5b4635]">
                 Send local photos and videos into your vault library. After refresh, they show up in Photos.
               </p>
-              <input
-                name="files"
-                type="file"
-                multiple
-                accept={PHOTO_VIDEO_ACCEPT}
-                className="mt-4 block w-full rounded-2xl border border-[#ddccb9] bg-white px-4 py-3 text-sm"
-              />
-              <button
-                type="submit"
-                className="mt-4 rounded-full bg-[#241b14] px-5 py-3 text-sm font-semibold text-[#fff6ed]"
-              >
-                Upload Media
-              </button>
-            </form>
+              <div className="mt-4">
+                <GoogleUploadForm
+                  folderPath=""
+                  redirectTo="/dashboard"
+                  accept={PHOTO_VIDEO_ACCEPT}
+                  buttonLabel="Upload Media"
+                  buttonClassName="mt-1 rounded-full bg-[#241b14] px-5 py-3 text-sm font-semibold text-[#fff6ed]"
+                  inputClassName="block w-full rounded-2xl border border-[#ddccb9] bg-white px-4 py-3 text-sm"
+                />
+              </div>
+            </div>
 
-            <form action={uploadFilesToGoogleDriveAction} className="rounded-2xl bg-[#f7f0e7] p-4">
+            <div className="rounded-2xl bg-[#f7f0e7] p-4">
               <p className="font-heading text-2xl font-semibold text-[#241b14]">
                 Upload Files
               </p>
               <p className="mt-2 text-sm text-[#5b4635]">
                 Send local files and documents into your vault library. After refresh, they show up in Files.
               </p>
-              <input
-                name="files"
-                type="file"
-                multiple
-                className="mt-4 block w-full rounded-2xl border border-[#ddccb9] bg-white px-4 py-3 text-sm"
-              />
-              <button
-                type="submit"
-                className="mt-4 rounded-full bg-[#436b5c] px-5 py-3 text-sm font-semibold text-[#f7f2ea]"
-              >
-                Upload Files
-              </button>
-            </form>
+              <div className="mt-4">
+                <GoogleUploadForm
+                  folderPath=""
+                  redirectTo="/dashboard"
+                  buttonLabel="Upload Files"
+                  buttonClassName="mt-1 rounded-full bg-[#436b5c] px-5 py-3 text-sm font-semibold text-[#f7f2ea]"
+                  inputClassName="block w-full rounded-2xl border border-[#ddccb9] bg-white px-4 py-3 text-sm"
+                />
+              </div>
+            </div>
           </div>
       </section>
 

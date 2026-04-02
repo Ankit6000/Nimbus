@@ -169,6 +169,7 @@ export default async function VaultSectionPage({ params }: VaultSectionPageProps
             return (
               <article
                 key={item.id}
+                data-item-id={item.id}
                 className="group relative overflow-hidden rounded-[28px] border border-[#ead9c8] bg-[#fffaf2] transition hover:-translate-y-1 hover:shadow-xl"
               >
                 <div className="absolute right-3 top-3">
@@ -250,6 +251,7 @@ export default async function VaultSectionPage({ params }: VaultSectionPageProps
             return (
               <article
                 key={item.id}
+                data-item-id={item.id}
                 className="group relative overflow-hidden rounded-[28px] border border-[#ead9c8] bg-[#fffaf2] transition hover:-translate-y-1 hover:shadow-xl"
               >
                 <div className="absolute right-3 top-3">
@@ -298,6 +300,7 @@ export default async function VaultSectionPage({ params }: VaultSectionPageProps
               item.itemKind === "audio-note" ? (
                 <article
                   key={item.id}
+                  data-item-id={item.id}
                   className="relative rounded-[28px] border border-[#ead9c8] bg-[#fffaf2] p-5 transition hover:-translate-y-1 hover:shadow-xl"
                 >
                   <div className="absolute right-3 top-3">
@@ -321,7 +324,7 @@ export default async function VaultSectionPage({ params }: VaultSectionPageProps
                   </Link>
                 </article>
               ) : (
-                <form key={item.id} action={saveVaultNoteAction} className="rounded-[28px] border border-[#ead9c8] bg-[#fffaf2] p-5">
+                <form key={item.id} data-item-id={item.id} action={saveVaultNoteAction} className="rounded-[28px] border border-[#ead9c8] bg-[#fffaf2] p-5">
                   <input type="hidden" name="itemId" value={item.id} />
                   <input
                     name="title"
@@ -351,7 +354,7 @@ export default async function VaultSectionPage({ params }: VaultSectionPageProps
                 </form>
               )
             ) : key === "passwords" ? (
-              <form key={item.id} action={saveVaultPasswordAction} className="rounded-[28px] border border-[#ead9c8] bg-[#fffaf2] p-5">
+              <form key={item.id} data-item-id={item.id} action={saveVaultPasswordAction} className="rounded-[28px] border border-[#ead9c8] bg-[#fffaf2] p-5">
                 <input type="hidden" name="itemId" value={item.id} />
                 <div className="grid gap-3">
                   <input name="label" defaultValue={item.title} className="rounded-2xl border border-[#ddccb9] bg-white px-4 py-3 font-heading text-2xl font-semibold text-[#241b14] outline-none" />
@@ -378,6 +381,7 @@ export default async function VaultSectionPage({ params }: VaultSectionPageProps
             ) : (
               <article
                 key={item.id}
+                data-item-id={item.id}
                 className="relative rounded-[28px] border border-[#ead9c8] bg-[#fffaf2] p-5 transition hover:-translate-y-1 hover:shadow-xl"
               >
                 <div className="absolute right-3 top-3">

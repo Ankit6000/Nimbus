@@ -44,6 +44,9 @@ export function VaultItemMenu({ item, redirectTo, align = "right" }: VaultItemMe
       return;
     }
 
+    const selector = `[data-item-id="${item.id}"]`;
+    const card = document.querySelector(selector);
+    card?.remove();
     router.replace(redirectTo);
     router.refresh();
   }
