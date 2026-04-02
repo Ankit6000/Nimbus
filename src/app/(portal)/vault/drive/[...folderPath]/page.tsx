@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createDriveFolderAction } from "@/app/actions";
+import { DriveLibraryPanels } from "@/components/drive-library-panels";
 import { GoogleUploadForm } from "@/components/google-upload-form";
 import { PendingSubmitButton } from "@/components/pending-submit-button";
 import { VaultItemMenu } from "@/components/vault-item-menu";
@@ -27,10 +28,10 @@ export default async function DriveFolderPage({ params, searchParams }: DriveFol
   const breadcrumbParts = folderPath.split("/").filter(Boolean);
 
   return (
-    <div className="grid gap-6">
-      <section className="rounded-[32px] border border-[#ead9c8] bg-[#fffaf2] p-6 sm:p-8">
+    <div className="grid min-w-0 gap-4 sm:gap-6">
+      <section className="min-w-0 rounded-[26px] border border-[#ead9c8] bg-[#fffaf2] p-5 sm:rounded-[32px] sm:p-8">
         <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[#8b6d52]">Folder</p>
-        <h1 className="font-heading mt-3 text-4xl font-semibold tracking-tight text-[#241b14]">
+        <h1 className="font-heading mt-3 text-[2rem] font-semibold tracking-tight text-[#241b14] sm:text-4xl">
           {breadcrumbParts.at(-1) ?? "Folder"}
         </h1>
         <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-[#5b4635]">
@@ -52,12 +53,12 @@ export default async function DriveFolderPage({ params, searchParams }: DriveFol
         </div>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-        <form action={createDriveFolderAction} className="rounded-[28px] border border-[#ead9c8] bg-[#fffaf2] p-5">
+      <section className="grid min-w-0 gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <form action={createDriveFolderAction} className="min-w-0 rounded-[24px] border border-[#ead9c8] bg-[#fffaf2] p-4 sm:rounded-[28px] sm:p-5">
           <input type="hidden" name="folderPath" value={folderPath} />
           <input type="hidden" name="redirectTo" value={`/vault/drive/${segments.map(encodeURIComponent).join("/")}`} />
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#8b6d52]">Folders</p>
-          <h2 className="font-heading mt-2 text-3xl font-semibold text-[#241b14]">Create subfolder</h2>
+          <h2 className="font-heading mt-2 text-[1.7rem] font-semibold text-[#241b14] sm:text-3xl">Create subfolder</h2>
           {created ? <p className="mt-4 rounded-2xl bg-[#e3f3ea] px-4 py-3 text-sm text-[#335443]">Folder created.</p> : null}
           {invalid ? <p className="mt-4 rounded-2xl bg-[#f7e1dc] px-4 py-3 text-sm text-[#7b3d31]">Enter a folder name.</p> : null}
           {errored ? <p className="mt-4 rounded-2xl bg-[#f7e1dc] px-4 py-3 text-sm text-[#7b3d31]">Folder creation failed.</p> : null}
@@ -66,14 +67,14 @@ export default async function DriveFolderPage({ params, searchParams }: DriveFol
             <PendingSubmitButton
               idleLabel="Create Folder"
               pendingLabel="Creating..."
-              className="rounded-full bg-[#241b14] px-5 py-3 text-sm font-semibold text-[#fff6ed]"
+              className="w-full rounded-full bg-[#241b14] px-5 py-3 text-sm font-semibold text-[#fff6ed] sm:w-auto"
             />
           </div>
         </form>
 
-        <div className="rounded-[28px] border border-[#ead9c8] bg-[#fffaf2] p-5">
+        <div className="min-w-0 rounded-[24px] border border-[#ead9c8] bg-[#fffaf2] p-4 sm:rounded-[28px] sm:p-5">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#8b6d52]">Upload</p>
-          <h2 className="font-heading mt-2 text-3xl font-semibold text-[#241b14]">Upload here</h2>
+          <h2 className="font-heading mt-2 text-[1.7rem] font-semibold text-[#241b14] sm:text-3xl">Upload here</h2>
           <p className="mt-2 text-sm leading-6 text-[#5b4635]">
             Upload files directly into this folder. Photos and videos also stay visible in their media sections.
           </p>
@@ -82,22 +83,27 @@ export default async function DriveFolderPage({ params, searchParams }: DriveFol
               folderPath={folderPath}
               redirectTo={`/vault/drive/${segments.map(encodeURIComponent).join("/")}`}
               buttonLabel="Upload Files"
-              buttonClassName="mt-1 rounded-full bg-[#436b5c] px-5 py-3 text-sm font-semibold text-[#f7f2ea]"
+              buttonClassName="mt-1 w-full rounded-full bg-[#436b5c] px-5 py-3 text-sm font-semibold text-[#f7f2ea] sm:w-auto"
               inputClassName="block w-full rounded-2xl border border-[#ddccb9] bg-white px-4 py-3 text-sm"
             />
           </div>
         </div>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
-        <div className="rounded-[28px] border border-[#ead9c8] bg-[#fffaf2] p-5">
+      <DriveLibraryPanels
+        leftLabel="Folders"
+        rightLabel="Files"
+        leftCount={folders.length}
+        rightCount={files.length}
+        leftPanel={
+        <div className="min-w-0 rounded-[24px] border border-[#ead9c8] bg-[#fffaf2] p-4 sm:rounded-[28px] sm:p-5">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#8b6d52]">Subfolders</p>
           <div className="mt-4 grid gap-3">
             {folders.length === 0 ? (
               <div className="rounded-2xl bg-[#f4ebe0] px-4 py-4 text-sm text-[#5b4635]">No subfolders here yet.</div>
             ) : (
               folders.map((folder) => (
-                <article key={folder.id} data-item-id={folder.id} className="relative rounded-2xl bg-[#f4ebe0] px-4 py-4 text-sm font-semibold text-[#241b14] transition hover:bg-[#eadfce]">
+                <article key={folder.id} data-item-id={folder.id} className="relative min-w-0 rounded-2xl bg-[#f4ebe0] px-4 py-4 text-sm font-semibold text-[#241b14] transition hover:bg-[#eadfce]">
                   <div className="absolute right-3 top-3">
                     <VaultItemMenu
                       item={{
@@ -116,7 +122,7 @@ export default async function DriveFolderPage({ params, searchParams }: DriveFol
                       redirectTo={`/vault/drive/${segments.map(encodeURIComponent).join("/")}`}
                     />
                   </div>
-                  <Link href={`/vault/drive/${folder.fullPath.split("/").map(encodeURIComponent).join("/")}`} className="block pr-12">
+                  <Link href={`/vault/drive/${folder.fullPath.split("/").map(encodeURIComponent).join("/")}`} className="block break-words pr-12 leading-6">
                     {folder.name}
                   </Link>
                 </article>
@@ -124,25 +130,26 @@ export default async function DriveFolderPage({ params, searchParams }: DriveFol
             )}
           </div>
         </div>
-
-        <div className="rounded-[28px] border border-[#ead9c8] bg-[#fffaf2] p-5">
+        }
+        rightPanel={
+        <div className="min-w-0 rounded-[24px] border border-[#ead9c8] bg-[#fffaf2] p-4 sm:rounded-[28px] sm:p-5">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#8b6d52]">Files</p>
           <div className="mt-4 grid gap-3">
             {files.length === 0 ? (
               <div className="rounded-2xl bg-[#f4ebe0] px-4 py-4 text-sm text-[#5b4635]">No files in this folder yet.</div>
             ) : (
               files.map((item) => (
-                <article key={item.id} data-item-id={item.id} className="relative rounded-2xl bg-[#f4ebe0] px-4 py-4 text-sm text-[#5b4635] transition hover:bg-[#eadfce]">
+                <article key={item.id} data-item-id={item.id} className="relative min-w-0 rounded-2xl bg-[#f4ebe0] px-4 py-4 text-sm text-[#5b4635] transition hover:bg-[#eadfce]">
                   <div className="absolute right-3 top-3">
                     <VaultItemMenu item={item} redirectTo={`/vault/drive/${segments.map(encodeURIComponent).join("/")}`} />
                   </div>
-                  <Link key={item.id} href={`/vault/item/${item.id}`} className="block pr-12">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="font-semibold text-[#241b14]">{item.title}</p>
+                  <Link key={item.id} href={`/vault/item/${item.id}`} className="block min-w-0 pr-12">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="break-all font-semibold leading-6 text-[#241b14]">{item.title}</p>
                       <p className="mt-1">{item.itemKind ?? item.source ?? "file"}</p>
                     </div>
-                    <div className="text-right">
+                    <div className="sm:text-right">
                       <p className="font-semibold text-[#241b14]">{formatBytes(item.bytes)}</p>
                       <p className="mt-1 text-xs text-[#8b6d52]">{formatDateTime(item.occurredAt)}</p>
                     </div>
@@ -153,7 +160,8 @@ export default async function DriveFolderPage({ params, searchParams }: DriveFol
             )}
           </div>
         </div>
-      </section>
+        }
+      />
     </div>
   );
 }

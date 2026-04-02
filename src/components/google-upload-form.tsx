@@ -89,7 +89,7 @@ export function GoogleUploadForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="grid gap-3 lg:min-w-[360px]">
+    <form onSubmit={handleSubmit} className="grid min-w-0 gap-3">
       <input
         ref={inputRef}
         name="files"
@@ -97,7 +97,7 @@ export function GoogleUploadForm({
         accept={accept}
         multiple={multiple}
         disabled={uploading}
-        className={inputClassName}
+        className={`${inputClassName} min-w-0 max-w-full overflow-hidden text-ellipsis whitespace-nowrap file:mr-3 file:max-w-full file:overflow-hidden file:text-ellipsis`}
       />
 
       {uploading ? (

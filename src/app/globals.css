@@ -62,3 +62,63 @@ select {
     radial-gradient(circle at center, rgba(255, 250, 242, 0.95) 0 58%, transparent 59%),
     conic-gradient(from -80deg, #c55c32 0deg, #e39c6d 140deg, rgba(118, 50, 26, 0.14) 140deg);
 }
+
+.fluid-page-shell {
+  padding-inline: clamp(0.7rem, 2.4vw, 1.25rem);
+  padding-block: clamp(0.7rem, 2.4vw, 1.25rem);
+}
+
+.fluid-main-panel {
+  padding: clamp(0.95rem, 3vw, 1.5rem);
+}
+
+.fluid-card-pad {
+  padding: clamp(0.95rem, 3vw, 1.35rem);
+}
+
+.fluid-hero-title {
+  font-size: clamp(1.9rem, 6vw, 3.25rem);
+  line-height: 0.98;
+}
+
+.fluid-hero-copy {
+  font-size: clamp(0.95rem, 2.7vw, 1.05rem);
+  line-height: 1.7;
+}
+
+.adaptive-nav-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.75rem), 1fr));
+  gap: 0.5rem;
+}
+
+.adaptive-media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10.25rem), 1fr));
+  gap: 0.75rem;
+}
+
+.adaptive-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr));
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .fluid-page-shell {
+    padding-inline: 1.25rem;
+    padding-block: 1.25rem;
+  }
+
+  .fluid-main-panel {
+    padding: 1.5rem;
+  }
+
+  .fluid-card-pad {
+    padding: 1.25rem;
+  }
+
+  .adaptive-media-grid {
+    gap: 1rem;
+  }
+}

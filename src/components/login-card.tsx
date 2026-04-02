@@ -11,45 +11,45 @@ export function LoginCard({ error }: LoginCardProps) {
     (process.env.NEXT_PUBLIC_SHOW_DEMO_CREDENTIALS == null && process.env.NODE_ENV !== "production");
 
   return (
-    <section className="glass-panel relative overflow-hidden rounded-[32px] px-7 py-7 sm:px-9 sm:py-9">
+    <section className="glass-panel relative overflow-hidden rounded-[30px] px-5 py-6 sm:px-8 sm:py-8">
       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#c55c32] via-[#b89132] to-[#436b5c]" />
-      <div className="mb-8 flex items-center justify-between">
-        <div>
+      <div className="mb-6 flex items-start justify-between gap-4 sm:mb-8 sm:items-center">
+        <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.36em] text-[#8b6d52]">
             Nimbus Vault
           </p>
-          <h1 className="font-heading mt-3 text-4xl font-semibold tracking-tight text-[#241b14]">
+          <h1 className="font-heading mt-3 text-[2rem] font-semibold tracking-tight text-[#241b14] sm:text-4xl">
             One login. Hidden storage rails.
           </h1>
         </div>
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#f7dfd3] text-lg font-semibold text-[#76321a]">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#f7dfd3] text-sm font-semibold text-[#76321a] sm:h-16 sm:w-16 sm:text-lg">
           NV
         </div>
       </div>
 
-      <div className="grid gap-4 rounded-[24px] border border-[#ead9c8] bg-[#fffaf2] p-5 text-sm text-[#5b4635]">
+      <div className="grid gap-4 rounded-[24px] border border-[#ead9c8] bg-[#fffaf2] p-4 text-sm text-[#5b4635] sm:p-5">
         <p>
           Assigned accounts stay behind the scenes. Your member signs into this portal once and
           sees a single vault for photos, files, notes, mail, passwords, and imported message
           archives.
         </p>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
           <div className="rounded-2xl bg-[#f4ebe0] p-4">
             <p className="text-xs uppercase tracking-[0.22em] text-[#8b6d52]">Aggregated</p>
-            <p className="mt-2 text-xl font-semibold text-[#241b14]">Combined quota</p>
+            <p className="mt-2 text-lg font-semibold text-[#241b14] sm:text-xl">Combined quota</p>
           </div>
           <div className="rounded-2xl bg-[#f4ebe0] p-4">
             <p className="text-xs uppercase tracking-[0.22em] text-[#8b6d52]">Private</p>
-            <p className="mt-2 text-xl font-semibold text-[#241b14]">Hidden channels</p>
+            <p className="mt-2 text-lg font-semibold text-[#241b14] sm:text-xl">Hidden channels</p>
           </div>
           <div className="rounded-2xl bg-[#f4ebe0] p-4">
             <p className="text-xs uppercase tracking-[0.22em] text-[#8b6d52]">Ready</p>
-            <p className="mt-2 text-xl font-semibold text-[#241b14]">Sync hooks</p>
+            <p className="mt-2 text-lg font-semibold text-[#241b14] sm:text-xl">Sync hooks</p>
           </div>
         </div>
       </div>
 
-      <div className="mt-8 rounded-[28px] bg-[#221912] p-6 text-[#f8f0e7] shadow-2xl">
+      <div className="mt-6 rounded-[28px] bg-[#221912] p-5 text-[#f8f0e7] shadow-2xl sm:mt-8 sm:p-6">
         <div className="mb-5">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#c9ab93]">
             Member Access
@@ -87,7 +87,7 @@ export function LoginCard({ error }: LoginCardProps) {
           </p>
         ) : null}
 
-        <div className="mt-6 flex items-center justify-between gap-4">
+        <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-sm text-[#c9ab93]">
             {showDemoCredentials ? (
               <>
@@ -100,7 +100,7 @@ export function LoginCard({ error }: LoginCardProps) {
           <PendingSubmitButton
             idleLabel="Enter Vault"
             pendingLabel="Entering..."
-            className="rounded-full bg-[#f0bc8f] px-6 py-3 font-semibold text-[#241b14] transition hover:bg-[#f7c79f]"
+            className="w-full rounded-full bg-[#f0bc8f] px-6 py-3 font-semibold text-[#241b14] transition hover:bg-[#f7c79f] sm:w-auto"
           />
         </div>
 

@@ -53,24 +53,24 @@ export default async function VaultItemPage({ params }: VaultItemPageProps) {
       : `/vault/${item.section}`;
 
   return (
-    <div className="grid gap-6">
-      <section className="rounded-[32px] border border-[#ead9c8] bg-[#fffaf2] p-6 sm:p-8">
+    <div className="grid gap-4 sm:gap-6">
+      <section className="rounded-[26px] border border-[#ead9c8] bg-[#fffaf2] p-5 sm:rounded-[32px] sm:p-8">
         <div className={`h-2 rounded-full bg-gradient-to-r ${meta.accent}`} />
-        <div className="mt-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="mt-5 flex flex-col gap-4 lg:mt-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[#8b6d52]">
               {meta.title} Item
             </p>
-            <h1 className="font-heading mt-3 text-4xl font-semibold tracking-tight text-[#241b14]">
+            <h1 className="font-heading mt-3 text-[2rem] font-semibold tracking-tight text-[#241b14] sm:text-4xl">
               {item.title}
             </h1>
             <p className="mt-3 text-sm leading-6 text-[#5b4635]">
               {item.subtitle || item.source || item.itemKind || "Stored inside your vault."}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <VaultItemMenu item={item} redirectTo={backHref} />
-            <Link href={backHref} className="rounded-full bg-[#241b14] px-5 py-3 text-sm font-semibold text-[#fff6ed]">
+            <Link href={backHref} className="inline-flex items-center justify-center rounded-full bg-[#241b14] px-5 py-3 text-sm font-semibold text-[#fff6ed]">
               Back
             </Link>
           </div>
@@ -78,7 +78,7 @@ export default async function VaultItemPage({ params }: VaultItemPageProps) {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
-        <div className="rounded-[32px] border border-[#ead9c8] bg-[#fffaf2] p-6">
+        <div className="rounded-[26px] border border-[#ead9c8] bg-[#fffaf2] p-4 sm:rounded-[32px] sm:p-6">
           {(hasStoredBinary || thumbnailLink) && isImage ? (
             <div className="relative aspect-[4/3] overflow-hidden rounded-[28px] bg-[#f7f0e7]">
               <Image src={hasStoredBinary ? fileUrl : thumbnailLink ?? ""} alt={item.title} fill className="object-contain" unoptimized />
@@ -96,13 +96,13 @@ export default async function VaultItemPage({ params }: VaultItemPageProps) {
           ) : null}
 
           {hasStoredBinary && isAudio ? (
-            <div className="rounded-[28px] bg-[#f7f0e7] p-6">
+            <div className="rounded-[24px] bg-[#f7f0e7] p-4 sm:rounded-[28px] sm:p-6">
               <audio src={fileUrl} controls className="w-full" />
             </div>
           ) : null}
 
           {item.section === "mail" && fullMail ? (
-            <div className="rounded-[28px] bg-[#f7f0e7] p-6">
+            <div className="rounded-[24px] bg-[#f7f0e7] p-4 sm:rounded-[28px] sm:p-6">
               <div className="grid gap-2 border-b border-[#e2d5c6] pb-4 text-sm text-[#5b4635]">
                 <p><span className="font-semibold text-[#241b14]">From:</span> {fullMail.from || item.subtitle}</p>
                 <p><span className="font-semibold text-[#241b14]">To:</span> {fullMail.to || "Hidden"}</p>
@@ -122,7 +122,7 @@ export default async function VaultItemPage({ params }: VaultItemPageProps) {
           ) : null}
 
           {item.section === "passwords" ? (
-            <div className="rounded-[28px] bg-[#f7f0e7] p-6 text-sm text-[#5b4635]">
+            <div className="rounded-[24px] bg-[#f7f0e7] p-4 text-sm text-[#5b4635] sm:rounded-[28px] sm:p-6">
               <div className="grid gap-3">
                 <p><span className="font-semibold text-[#241b14]">Username:</span> {item.subtitle || "Not set"}</p>
                 {typeof item.meta?.website === "string" && item.meta.website ? (
@@ -137,7 +137,7 @@ export default async function VaultItemPage({ params }: VaultItemPageProps) {
           ) : null}
 
           {item.section === "notes" && !isAudio ? (
-            <div className="rounded-[28px] bg-[#f7f0e7] p-6">
+            <div className="rounded-[24px] bg-[#f7f0e7] p-4 sm:rounded-[28px] sm:p-6">
               <pre className="whitespace-pre-wrap break-words text-sm leading-7 text-[#241b14]">
                 {typeof item.meta?.content === "string" ? item.meta.content : item.subtitle || ""}
               </pre>
@@ -145,30 +145,30 @@ export default async function VaultItemPage({ params }: VaultItemPageProps) {
           ) : null}
 
           {!isImage && !isVideo && !isAudio && item.section !== "mail" && item.section !== "passwords" && item.section !== "notes" ? (
-            <div className="rounded-[28px] bg-[#f7f0e7] p-6">
+            <div className="rounded-[24px] bg-[#f7f0e7] p-4 sm:rounded-[28px] sm:p-6">
               <p className="text-sm leading-7 text-[#5b4635]">
                 {noteText || item.subtitle || "This item does not have an inline preview yet, but its full metadata is available on the right."}
               </p>
             </div>
           ) : null}
 
-          <div className="mt-5 flex flex-wrap gap-3">
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             {hasStoredBinary ? (
-              <a href={fileUrl} target="_blank" rel="noreferrer" className="rounded-full bg-[#436b5c] px-5 py-3 text-sm font-semibold text-[#f7f2ea]">
+              <a href={fileUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded-full bg-[#436b5c] px-5 py-3 text-sm font-semibold text-[#f7f2ea]">
                 Open Full Item
               </a>
             ) : null}
             {webViewLink ? (
-              <a href={webViewLink} target="_blank" rel="noreferrer" className="rounded-full border border-[#d8c0ae] bg-white px-5 py-3 text-sm font-semibold text-[#3b2d20]">
+              <a href={webViewLink} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded-full border border-[#d8c0ae] bg-white px-5 py-3 text-sm font-semibold text-[#3b2d20]">
                 Open Source File
               </a>
             ) : null}
           </div>
         </div>
 
-        <aside className="rounded-[32px] border border-[#ead9c8] bg-[#fffaf2] p-6">
+        <aside className="rounded-[26px] border border-[#ead9c8] bg-[#fffaf2] p-4 sm:rounded-[32px] sm:p-6">
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8b6d52]">Details</p>
-          <div className="mt-5 grid gap-4 text-sm text-[#5b4635]">
+          <div className="mt-5 grid gap-3 text-sm text-[#5b4635] sm:gap-4">
             <div className="rounded-2xl bg-[#f7f0e7] p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-[#8b6d52]">Stored size</p>
               <p className="mt-2 text-lg font-semibold text-[#241b14]">{formatBytes(item.bytes)}</p>

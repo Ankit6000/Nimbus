@@ -50,62 +50,62 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     <div className="grid gap-6">
       <section className="grid items-start gap-6 xl:grid-cols-[1.4fr_0.8fr]">
         <div className="grid gap-4">
-          <div className="self-start rounded-[32px] bg-[#1f1712] p-6 text-[#f8efe5] sm:p-7">
+          <div className="self-start rounded-[28px] bg-[#1f1712] p-5 text-[#f8efe5] sm:rounded-[32px] sm:p-7">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
               <div className="max-w-2xl">
                 <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[#d4b69f]">
                   Combined Vault
                 </p>
-                <h1 className="font-heading mt-3 text-4xl font-semibold tracking-tight sm:text-[3.4rem]">
+                <h1 className="font-heading mt-3 text-[2.2rem] font-semibold tracking-tight sm:text-[3.4rem]">
                   Welcome back, {user.fullName.split(" ")[0]}.
                 </h1>
-                <p className="mt-3 max-w-xl text-sm leading-7 text-[#dccfc4] sm:text-base">
+                <p className="mt-3 max-w-xl text-sm leading-6 text-[#dccfc4] sm:text-base sm:leading-7">
                   One private dashboard for all assigned storage, files, mail, notes, and uploads.
                 </p>
               </div>
 
-              <div className="grid w-full max-w-[290px] gap-3 sm:grid-cols-2 lg:grid-cols-1">
+              <div className="grid w-full gap-3 sm:max-w-[290px] sm:grid-cols-2 lg:grid-cols-1">
                 <div className="rounded-[24px] bg-[rgba(255,255,255,0.06)] px-5 py-4">
                   <p className="text-[11px] uppercase tracking-[0.26em] text-[#c9ab93]">Used</p>
                   <div className="mt-3 flex items-end justify-between gap-3">
-                    <p className="text-4xl font-semibold">{stats.percentageUsed}%</p>
+                    <p className="text-3xl font-semibold sm:text-4xl">{stats.percentageUsed}%</p>
                     <p className="pb-1 text-sm text-[#cdb9a8]">{formatBytes(stats.usedStorage)}</p>
                   </div>
                 </div>
                 <div className="rounded-[24px] bg-[rgba(255,255,255,0.06)] px-5 py-4">
                   <p className="text-[11px] uppercase tracking-[0.26em] text-[#c9ab93]">Space left</p>
-                  <p className="mt-3 text-3xl font-semibold">{formatBytes(stats.freeStorage)}</p>
+                  <p className="mt-3 text-2xl font-semibold sm:text-3xl">{formatBytes(stats.freeStorage)}</p>
                 </div>
               </div>
             </div>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-4">
+            <div className="mt-5 grid gap-3 grid-cols-2 sm:grid-cols-4">
               <div className="rounded-[22px] bg-[#2c2119] p-4">
                 <p className="text-[11px] uppercase tracking-[0.24em] text-[#c9ab93]">Total space</p>
-                <p className="mt-2 text-2xl font-semibold">{formatBytes(stats.totalStorage)}</p>
+                <p className="mt-2 text-xl font-semibold sm:text-2xl">{formatBytes(stats.totalStorage)}</p>
               </div>
               <div className="rounded-[22px] bg-[#2c2119] p-4">
                 <p className="text-[11px] uppercase tracking-[0.24em] text-[#c9ab93]">Photos</p>
-                <p className="mt-2 text-2xl font-semibold">{formatCompactNumber(stats.photoCount)}</p>
+                <p className="mt-2 text-xl font-semibold sm:text-2xl">{formatCompactNumber(stats.photoCount)}</p>
               </div>
               <div className="rounded-[22px] bg-[#2c2119] p-4">
                 <p className="text-[11px] uppercase tracking-[0.24em] text-[#c9ab93]">Mail items</p>
-                <p className="mt-2 text-2xl font-semibold">{formatCompactNumber(stats.mailCount)}</p>
+                <p className="mt-2 text-xl font-semibold sm:text-2xl">{formatCompactNumber(stats.mailCount)}</p>
               </div>
               <div className="rounded-[22px] bg-[#2c2119] p-4">
                 <p className="text-[11px] uppercase tracking-[0.24em] text-[#c9ab93]">Passwords</p>
-                <p className="mt-2 text-2xl font-semibold">{formatCompactNumber(stats.passwordCount)}</p>
+                <p className="mt-2 text-xl font-semibold sm:text-2xl">{formatCompactNumber(stats.passwordCount)}</p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-[32px] border border-[#ead9c8] bg-[#fffaf2] p-6">
+          <div className="rounded-[28px] border border-[#ead9c8] bg-[#fffaf2] p-5 sm:rounded-[32px] sm:p-6">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
               <div className="max-w-xl">
                 <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8b6d52]">
                   Quick Access
                 </p>
-                <h2 className="font-heading mt-3 text-3xl font-semibold text-[#241b14]">
+                <h2 className="font-heading mt-3 text-[2rem] font-semibold text-[#241b14] sm:text-3xl">
                   Jump straight into the vault
                 </h2>
                 <p className="mt-3 text-sm leading-6 text-[#5b4635]">
@@ -119,7 +119,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                   className="rounded-[24px] bg-[#f7f0e7] px-4 py-4 transition hover:bg-[#efe4d7]"
                 >
                   <p className="text-[11px] uppercase tracking-[0.22em] text-[#8b6d52]">Photos</p>
-                  <p className="mt-2 text-2xl font-semibold text-[#241b14]">{formatCompactNumber(stats.photoCount)}</p>
+                  <p className="mt-2 text-xl font-semibold text-[#241b14] sm:text-2xl">{formatCompactNumber(stats.photoCount)}</p>
                   <p className="mt-1 text-sm text-[#5b4635]">Gallery and image uploads</p>
                 </Link>
                 <Link
@@ -127,7 +127,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                   className="rounded-[24px] bg-[#f7f0e7] px-4 py-4 transition hover:bg-[#efe4d7]"
                 >
                   <p className="text-[11px] uppercase tracking-[0.22em] text-[#8b6d52]">Files</p>
-                  <p className="mt-2 text-2xl font-semibold text-[#241b14]">{formatCompactNumber(stats.bySection.drive.count)}</p>
+                  <p className="mt-2 text-xl font-semibold text-[#241b14] sm:text-2xl">{formatCompactNumber(stats.bySection.drive.count)}</p>
                   <p className="mt-1 text-sm text-[#5b4635]">All files and folders in your vault</p>
                 </Link>
                 <Link
@@ -135,7 +135,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                   className="rounded-[24px] bg-[#f7f0e7] px-4 py-4 transition hover:bg-[#efe4d7]"
                 >
                   <p className="text-[11px] uppercase tracking-[0.22em] text-[#8b6d52]">Notes</p>
-                  <p className="mt-2 text-2xl font-semibold text-[#241b14]">{formatCompactNumber(stats.bySection.notes.count)}</p>
+                  <p className="mt-2 text-xl font-semibold text-[#241b14] sm:text-2xl">{formatCompactNumber(stats.bySection.notes.count)}</p>
                   <p className="mt-1 text-sm text-[#5b4635]">Text notes and voice notes</p>
                 </Link>
                 <Link
@@ -143,26 +143,26 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                   className="rounded-[24px] bg-[#f7f0e7] px-4 py-4 transition hover:bg-[#efe4d7]"
                 >
                   <p className="text-[11px] uppercase tracking-[0.22em] text-[#8b6d52]">Recent Activity</p>
-                  <p className="mt-2 text-2xl font-semibold text-[#241b14]">{formatCompactNumber(stats.bySection.photos.count + stats.bySection.videos.count + stats.bySection.drive.count)}</p>
+                  <p className="mt-2 text-xl font-semibold text-[#241b14] sm:text-2xl">{formatCompactNumber(stats.bySection.photos.count + stats.bySection.videos.count + stats.bySection.drive.count)}</p>
                   <p className="mt-1 text-sm text-[#5b4635]">Latest uploads and synced items</p>
                 </Link>
               </div>
             </div>
 
-            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            <div className="mt-6 grid gap-3 grid-cols-1 sm:grid-cols-3">
               <div className="rounded-[22px] border border-[#ead9c8] bg-white px-4 py-4">
                 <p className="text-[11px] uppercase tracking-[0.22em] text-[#8b6d52]">Videos</p>
-                <p className="mt-2 text-2xl font-semibold text-[#241b14]">{formatCompactNumber(stats.videoCount)}</p>
+                <p className="mt-2 text-xl font-semibold text-[#241b14] sm:text-2xl">{formatCompactNumber(stats.videoCount)}</p>
                 <p className="mt-1 text-sm text-[#5b4635]">{formatBytes(stats.bySection.videos.used)}</p>
               </div>
               <div className="rounded-[22px] border border-[#ead9c8] bg-white px-4 py-4">
                 <p className="text-[11px] uppercase tracking-[0.22em] text-[#8b6d52]">Notes Storage</p>
-                <p className="mt-2 text-2xl font-semibold text-[#241b14]">{formatCompactNumber(stats.bySection.notes.count)}</p>
+                <p className="mt-2 text-xl font-semibold text-[#241b14] sm:text-2xl">{formatCompactNumber(stats.bySection.notes.count)}</p>
                 <p className="mt-1 text-sm text-[#5b4635]">{formatBytes(stats.bySection.notes.used)}</p>
               </div>
               <div className="rounded-[22px] border border-[#ead9c8] bg-white px-4 py-4">
                 <p className="text-[11px] uppercase tracking-[0.22em] text-[#8b6d52]">Mail Storage</p>
-                <p className="mt-2 text-2xl font-semibold text-[#241b14]">{formatCompactNumber(stats.mailCount)}</p>
+                <p className="mt-2 text-xl font-semibold text-[#241b14] sm:text-2xl">{formatCompactNumber(stats.mailCount)}</p>
                 <p className="mt-1 text-sm text-[#5b4635]">{formatBytes(stats.bySection.mail.used)}</p>
               </div>
             </div>
@@ -170,11 +170,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         </div>
 
         <div className="grid gap-4">
-          <div className="rounded-[32px] border border-[#ead9c8] bg-[#fffaf2] p-6">
+          <div className="rounded-[28px] border border-[#ead9c8] bg-[#fffaf2] p-5 sm:rounded-[32px] sm:p-6">
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8b6d52]">
               Vault Refresh
             </p>
-            <h2 className="font-heading mt-3 text-3xl font-semibold text-[#241b14]">
+            <h2 className="font-heading mt-3 text-[2rem] font-semibold text-[#241b14] sm:text-3xl">
               Refresh your vault
             </h2>
             <p className="mt-3 text-sm leading-6 text-[#5b4635]">
@@ -231,11 +231,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             </div>
           </div>
 
-          <div className="rounded-[32px] border border-[#ead9c8] bg-[#fffaf2] p-6">
+          <div className="rounded-[28px] border border-[#ead9c8] bg-[#fffaf2] p-5 sm:rounded-[32px] sm:p-6">
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8b6d52]">
               Account Security
             </p>
-            <h2 className="font-heading mt-3 text-3xl font-semibold text-[#241b14]">
+            <h2 className="font-heading mt-3 text-[2rem] font-semibold text-[#241b14] sm:text-3xl">
               Reset your password
             </h2>
             <p className="mt-3 text-sm leading-6 text-[#5b4635]">
@@ -289,11 +289,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         </div>
       </section>
 
-      <section className="rounded-[32px] border border-[#ead9c8] bg-[#fffaf2] p-6">
+      <section className="rounded-[28px] border border-[#ead9c8] bg-[#fffaf2] p-5 sm:rounded-[32px] sm:p-6">
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8b6d52]">
             Imports
           </p>
-          <h2 className="font-heading mt-3 text-3xl font-semibold text-[#241b14]">
+          <h2 className="font-heading mt-3 text-[2rem] font-semibold text-[#241b14] sm:text-3xl">
             Upload Into Your Vault
           </h2>
           <p className="mt-3 text-sm leading-6 text-[#5b4635]">
@@ -340,7 +340,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           </div>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-3">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {sectionOrder.map((key) => {
           const meta = sectionMeta[key];
           const sectionStat = stats.bySection[key];
@@ -349,12 +349,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             <Link
               key={key}
               href={`/vault/${key}`}
-              className="group rounded-[30px] border border-[#ead9c8] bg-[#fffaf2] p-5 transition hover:-translate-y-1 hover:shadow-xl"
+              className="group rounded-[26px] border border-[#ead9c8] bg-[#fffaf2] p-5 transition hover:-translate-y-1 hover:shadow-xl sm:rounded-[30px]"
             >
               <div className={`h-2 rounded-full bg-gradient-to-r ${meta.accent}`} />
               <div className="mt-5 flex items-start justify-between gap-4">
                 <div>
-                  <p className="font-heading text-3xl font-semibold text-[#241b14]">{meta.title}</p>
+                  <p className="font-heading text-[2rem] font-semibold text-[#241b14] sm:text-3xl">{meta.title}</p>
                   <p className="mt-3 text-sm leading-6 text-[#5b4635]">{meta.description}</p>
                 </div>
                 <div className="rounded-full bg-[#f4ebe0] px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[#8b6d52]">
