@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { logoutAction } from "@/app/actions";
 import { PendingLink } from "@/components/pending-link";
 import { PendingSubmitButton } from "@/components/pending-submit-button";
@@ -27,6 +30,9 @@ type PortalShellProps = {
 };
 
 export function PortalShell({ user, currentPath, databaseStatus, children }: PortalShellProps) {
+  const pathname = usePathname();
+  const activePath = pathname || currentPath;
+
   return (
     <div className="h-screen overflow-hidden bg-transparent px-4 py-4 sm:px-6 lg:px-8">
       <div className="mx-auto grid h-[calc(100vh-2rem)] max-w-[1500px] gap-4 lg:grid-cols-[248px_minmax(0,1fr)]">
@@ -66,8 +72,8 @@ export function PortalShell({ user, currentPath, databaseStatus, children }: Por
               <PendingLink
                 href="/dashboard"
                 className={`rounded-2xl px-3 py-2.5 text-sm font-medium transition ${
-                  currentPath === "/dashboard"
-                    ? "bg-[#241b14] text-[#fff6ed]"
+                  activePath === "/dashboard"
+                    ? "bg-[#2f2118] text-[#fffaf2] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
                     : "bg-[#f5ecdf] text-[#3b2d20] hover:bg-[#ecdcc8]"
                 }`}
               >
@@ -76,8 +82,8 @@ export function PortalShell({ user, currentPath, databaseStatus, children }: Por
               <PendingLink
                 href="/activity"
                 className={`rounded-2xl px-3 py-2.5 text-sm font-medium transition ${
-                  currentPath === "/activity"
-                    ? "bg-[#241b14] text-[#fff6ed]"
+                  activePath === "/activity"
+                    ? "bg-[#2f2118] text-[#fffaf2] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
                     : "bg-[#f5ecdf] text-[#3b2d20] hover:bg-[#ecdcc8]"
                 }`}
               >
@@ -85,7 +91,7 @@ export function PortalShell({ user, currentPath, databaseStatus, children }: Por
               </PendingLink>
               {mainSectionOrder.map((key) => {
                 const href = `/vault/${key}`;
-                const active = currentPath === href || currentPath.startsWith(`${href}/`);
+                const active = activePath === href || activePath.startsWith(`${href}/`);
 
                 return (
                   <PendingLink
@@ -93,7 +99,7 @@ export function PortalShell({ user, currentPath, databaseStatus, children }: Por
                     href={href}
                     className={`rounded-2xl px-3 py-2.5 text-sm font-medium transition ${
                       active
-                        ? "bg-[#241b14] text-[#fff6ed]"
+                        ? "bg-[#2f2118] text-[#fffaf2] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
                         : "bg-[#f5ecdf] text-[#3b2d20] hover:bg-[#ecdcc8]"
                     }`}
                   >
@@ -106,7 +112,7 @@ export function PortalShell({ user, currentPath, databaseStatus, children }: Por
               </p>
               {otherSectionOrder.map((key) => {
                 const href = `/vault/${key}`;
-                const active = currentPath === href || currentPath.startsWith(`${href}/`);
+                const active = activePath === href || activePath.startsWith(`${href}/`);
 
                 return (
                   <PendingLink
@@ -114,7 +120,7 @@ export function PortalShell({ user, currentPath, databaseStatus, children }: Por
                     href={href}
                     className={`rounded-2xl px-3 py-2.5 text-sm font-medium transition ${
                       active
-                        ? "bg-[#241b14] text-[#fff6ed]"
+                        ? "bg-[#2f2118] text-[#fffaf2] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
                         : "bg-[#f5ecdf] text-[#3b2d20] hover:bg-[#ecdcc8]"
                     }`}
                   >
