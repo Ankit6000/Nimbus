@@ -3,21 +3,34 @@ import { redirect } from "next/navigation";
 import { getAdminByIdAsync, getPortalUserByIdAsync } from "@/lib/repository";
 
 const SESSION_COOKIE = process.env.NODE_ENV === "production" ? "__Host-nimbus-session" : "nimbus-session";
+const LEGACY_SESSION_COOKIE = "nimbus-session";
+
+function getSessionCookieOptions() {
+  return {
+    httpOnly: true as const,
+    sameSite: "lax" as const,
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+  };
+}
 
 export async function createSession(userId: string) {
   const store = await cookies();
   store.set(SESSION_COOKIE, userId, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
+    ...getSessionCookieOptions(),
     maxAge: 60 * 60 * 12,
   });
 }
 
 export async function clearSession() {
   const store = await cookies();
-  store.delete(SESSION_COOKIE);
+  for (const cookieName of new Set([SESSION_COOKIE, LEGACY_SESSION_COOKIE])) {
+    store.set(cookieName, "", {
+      ...getSessionCookieOptions(),
+      expires: new Date(0),
+      maxAge: 0,
+    });
+  }
 }
 
 export async function getCurrentUser() {
