@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PendingSubmitButton } from "@/components/pending-submit-button";
 
 type LoginCardProps = {
   error?: string;
@@ -96,12 +97,11 @@ export function LoginCard({ error }: LoginCardProps) {
               "Use the credentials created by your administrator."
             )}
           </div>
-          <button
-            type="submit"
+          <PendingSubmitButton
+            idleLabel="Enter Vault"
+            pendingLabel="Entering..."
             className="rounded-full bg-[#f0bc8f] px-6 py-3 font-semibold text-[#241b14] transition hover:bg-[#f7c79f]"
-          >
-            Enter Vault
-          </button>
+          />
         </div>
 
         <div className="mt-5 flex flex-wrap gap-4 text-sm text-[#c9ab93]">

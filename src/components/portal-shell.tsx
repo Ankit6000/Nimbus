@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ReactNode } from "react";
 import { logoutAction } from "@/app/actions";
+import { PendingLink } from "@/components/pending-link";
+import { PendingSubmitButton } from "@/components/pending-submit-button";
 import { PortalUser, SectionKey, sectionMeta } from "@/lib/data";
 import { DatabaseRuntimeStatus } from "@/lib/db";
 
@@ -61,7 +63,7 @@ export function PortalShell({ user, currentPath, databaseStatus, children }: Por
               Navigation
             </p>
             <nav className="mt-3 grid gap-1.5">
-              <Link
+              <PendingLink
                 href="/dashboard"
                 className={`rounded-2xl px-3 py-2.5 text-sm font-medium transition ${
                   currentPath === "/dashboard"
@@ -70,8 +72,8 @@ export function PortalShell({ user, currentPath, databaseStatus, children }: Por
                 }`}
               >
                 Dashboard
-              </Link>
-              <Link
+              </PendingLink>
+              <PendingLink
                 href="/activity"
                 className={`rounded-2xl px-3 py-2.5 text-sm font-medium transition ${
                   currentPath === "/activity"
@@ -80,13 +82,13 @@ export function PortalShell({ user, currentPath, databaseStatus, children }: Por
                 }`}
               >
                 Recent Activity
-              </Link>
+              </PendingLink>
               {mainSectionOrder.map((key) => {
                 const href = `/vault/${key}`;
                 const active = currentPath === href || currentPath.startsWith(`${href}/`);
 
                 return (
-                  <Link
+                  <PendingLink
                     key={key}
                     href={href}
                     className={`rounded-2xl px-3 py-2.5 text-sm font-medium transition ${
@@ -96,7 +98,7 @@ export function PortalShell({ user, currentPath, databaseStatus, children }: Por
                     }`}
                   >
                     {sectionMeta[key].title}
-                  </Link>
+                  </PendingLink>
                 );
               })}
               <p className="mt-3 px-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8b6d52]">
@@ -107,7 +109,7 @@ export function PortalShell({ user, currentPath, databaseStatus, children }: Por
                 const active = currentPath === href || currentPath.startsWith(`${href}/`);
 
                 return (
-                  <Link
+                  <PendingLink
                     key={key}
                     href={href}
                     className={`rounded-2xl px-3 py-2.5 text-sm font-medium transition ${
@@ -117,19 +119,18 @@ export function PortalShell({ user, currentPath, databaseStatus, children }: Por
                     }`}
                   >
                     {sectionMeta[key].title}
-                  </Link>
+                  </PendingLink>
                 );
               })}
             </nav>
           </div>
 
           <form action={logoutAction} className="mt-auto pt-4">
-            <button
-              type="submit"
+            <PendingSubmitButton
+              idleLabel="Log Out"
+              pendingLabel="Logging Out..."
               className="w-full rounded-full border border-[#d8c0ae] bg-[#fffaf2] px-4 py-2.5 text-sm font-semibold text-[#3b2d20] transition hover:bg-[#f5ecdf]"
-            >
-              Log Out
-            </button>
+            />
           </form>
         </aside>
 

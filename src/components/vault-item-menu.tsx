@@ -27,6 +27,11 @@ export function VaultItemMenu({ item, redirectTo, align = "right" }: VaultItemMe
 
     setDeleting(true);
     setDeleteError(null);
+    const selector = `[data-item-id="${item.id}"]`;
+    const card = document.querySelector<HTMLElement>(selector);
+    if (card) {
+      card.style.display = "none";
+    }
 
     const response = await fetch("/api/vault/delete", {
       method: "POST",
@@ -37,15 +42,12 @@ export function VaultItemMenu({ item, redirectTo, align = "right" }: VaultItemMe
     });
 
     if (!response.ok) {
-      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
       setDeleting(false);
-      setDeleteError(payload?.error ?? "Delete failed.");
+      setDeleteError(null);
       router.refresh();
       return;
     }
 
-    const selector = `[data-item-id="${item.id}"]`;
-    const card = document.querySelector(selector);
     card?.remove();
     router.replace(redirectTo);
     router.refresh();

@@ -1,3 +1,5 @@
+import { PendingSubmitButton } from "@/components/pending-submit-button";
+
 type AdminLoginCardProps = {
   error?: string;
 };
@@ -49,12 +51,11 @@ export function AdminLoginCard({ error }: AdminLoginCardProps) {
           <p className="text-sm text-[#c9ab93]">
             Demo admin: <span className="font-semibold text-[#fff6ed]">admin / admin123</span>
           </p>
-          <button
-            type="submit"
+          <PendingSubmitButton
+            idleLabel="Enter Admin"
+            pendingLabel="Entering..."
             className="rounded-full bg-[#f0bc8f] px-6 py-3 font-semibold text-[#241b14] transition hover:bg-[#f7c79f]"
-          >
-            Enter Admin
-          </button>
+          />
         </div>
       </div>
     </section>
