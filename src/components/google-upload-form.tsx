@@ -11,7 +11,7 @@ type UploadQueueItem = {
   error?: string;
 };
 
-const GOOGLE_CHUNK_SIZE = 8 * 1024 * 1024;
+const GOOGLE_CHUNK_SIZE = 3 * 1024 * 1024;
 const WHOLE_FILE_UPLOAD_LIMIT = 12 * 1024 * 1024;
 const MAX_RETRIES = 3;
 
