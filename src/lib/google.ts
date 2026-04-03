@@ -654,6 +654,13 @@ export async function finalizeGoogleDriveUploads(userId: string, uploadedCount: 
 }
 
 export async function createGoogleDriveFolder(userId: string, folderName: string, parentFolderPath = "") {
+  const requestedPath = parentFolderPath ? `${parentFolderPath}/${folderName}` : folderName;
+  const existingFolder = await getDriveFolderMetaByPathAsync(userId, requestedPath);
+
+  if (existingFolder?.sourceAccountId && typeof existingFolder.meta?.fileId === "string") {
+    return;
+  }
+
   const target = await getGoogleUploadTargetForPathAsync(userId, parentFolderPath);
 
   if (!target?.refresh_token) {

@@ -1062,7 +1062,7 @@ export function listDriveFoldersAtPath(userId: string, folderPath: string) {
         SELECT id, source_account_id, meta_json
         FROM vault_items
         WHERE user_id = ? AND section = 'drive' AND item_kind = 'folder'
-        ORDER BY lower(title) ASC, title ASC
+        ORDER BY lower(title) ASC, title ASC, occurred_at ASC
       `,
     )
     .all(userId) as Array<{
@@ -1101,7 +1101,7 @@ export async function listDriveFoldersAtPathAsync(userId: string, folderPath: st
       SELECT id, source_account_id, meta_json
       FROM vault_items
       WHERE user_id = ? AND section = 'drive' AND item_kind = 'folder'
-      ORDER BY lower(title) ASC, title ASC
+      ORDER BY lower(title) ASC, title ASC, occurred_at ASC
     `,
     [userId],
   );
@@ -1127,6 +1127,10 @@ export async function listDriveFoldersAtPathAsync(userId: string, folderPath: st
 }
 
 export function listDriveFilesAtPath(userId: string, folderPath: string) {
+  const folderSourceAccountId = folderPath
+    ? getDriveFolderMetaByPath(userId, folderPath)?.sourceAccountId ?? null
+    : null;
+
   return listVaultItemsBySection(userId, "drive").filter((item) => {
     if (item.itemKind === "folder") {
       return false;
@@ -1134,11 +1138,22 @@ export function listDriveFilesAtPath(userId: string, folderPath: string) {
 
     const itemFolderPath =
       typeof item.meta?.folderPath === "string" ? item.meta.folderPath : "";
-    return itemFolderPath === folderPath;
+    if (itemFolderPath !== folderPath) {
+      return false;
+    }
+
+    if (!folderPath) {
+      return true;
+    }
+
+    return item.sourceAccountId === folderSourceAccountId;
   });
 }
 
 export async function listDriveFilesAtPathAsync(userId: string, folderPath: string) {
+  const folderSourceAccountId = folderPath
+    ? (await getDriveFolderMetaByPathAsync(userId, folderPath))?.sourceAccountId ?? null
+    : null;
   const items = await listVaultItemsBySectionAsync(userId, "drive");
   return items.filter((item) => {
     if (item.itemKind === "folder") {
@@ -1147,7 +1162,15 @@ export async function listDriveFilesAtPathAsync(userId: string, folderPath: stri
 
     const itemFolderPath =
       typeof item.meta?.folderPath === "string" ? item.meta.folderPath : "";
-    return itemFolderPath === folderPath;
+    if (itemFolderPath !== folderPath) {
+      return false;
+    }
+
+    if (!folderPath) {
+      return true;
+    }
+
+    return item.sourceAccountId === folderSourceAccountId;
   });
 }
 
