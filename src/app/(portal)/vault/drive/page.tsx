@@ -3,6 +3,7 @@ import { createDriveFolderAction } from "@/app/actions";
 import { DriveLibraryPanels } from "@/components/drive-library-panels";
 import { GoogleUploadForm } from "@/components/google-upload-form";
 import { PendingSubmitButton } from "@/components/pending-submit-button";
+import { VaultSelectionScope } from "@/components/vault-selection-scope";
 import { VaultItemMenu } from "@/components/vault-item-menu";
 import { requireUser } from "@/lib/auth";
 import { formatBytes, formatDateTime } from "@/lib/format";
@@ -77,78 +78,80 @@ export default async function DriveRootPage({ searchParams }: DriveRootPageProps
         </div>
       </section>
 
-      <DriveLibraryPanels
-        leftLabel="Folders"
-        rightLabel="Files"
-        leftCount={folders.length}
-        rightCount={files.length}
-        leftPanel={
-        <div className="min-w-0 rounded-[24px] border border-[#ead9c8] bg-[#fffaf2] p-4 sm:rounded-[28px] sm:p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#8b6d52]">Folders</p>
-          <div className="mt-4 grid gap-3">
-            {folders.length === 0 ? (
-              <div className="rounded-2xl bg-[#f4ebe0] px-4 py-4 text-sm text-[#5b4635]">No folders in root yet.</div>
-            ) : (
-              folders.map((folder) => (
-                <article key={folder.id} data-item-id={folder.id} className="relative min-w-0 rounded-2xl bg-[#f4ebe0] px-4 py-4 text-sm font-semibold text-[#241b14] transition hover:bg-[#eadfce]">
-                  <div className="absolute right-3 top-3">
-                    <VaultItemMenu
-                      item={{
-                        id: folder.id,
-                        section: "drive",
-                        title: folder.name,
-                        subtitle: folder.fullPath,
-                        bytes: 0,
-                        itemKind: "folder",
-                        source: "google-drive",
-                        sourceAccountId: folder.sourceAccountId,
-                        occurredAt: new Date().toISOString(),
-                        unread: false,
-                        meta: { folderPath: folder.parentPath, fullPath: folder.fullPath, fileId: folder.fileId },
-                      }}
-                      redirectTo="/vault/drive"
-                    />
-                  </div>
-                  <Link href={`/vault/drive/${folder.fullPath.split("/").map(encodeURIComponent).join("/")}`} className="block break-words pr-12 leading-6">
-                    {folder.name}
-                  </Link>
-                </article>
-              ))
-            )}
-          </div>
-        </div>
-        }
-        rightPanel={
-        <div className="min-w-0 rounded-[24px] border border-[#ead9c8] bg-[#fffaf2] p-4 sm:rounded-[28px] sm:p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#8b6d52]">Files</p>
-          <div className="mt-4 grid gap-3">
-            {files.length === 0 ? (
-              <div className="rounded-2xl bg-[#f4ebe0] px-4 py-4 text-sm text-[#5b4635]">No root files yet.</div>
-            ) : (
-              files.map((item) => (
-                <article key={item.id} data-item-id={item.id} className="relative min-w-0 rounded-2xl bg-[#f4ebe0] px-4 py-4 text-sm text-[#5b4635] transition hover:bg-[#eadfce]">
-                  <div className="absolute right-3 top-3">
-                    <VaultItemMenu item={item} redirectTo="/vault/drive" />
-                  </div>
-                  <Link href={`/vault/item/${item.id}`} className="block min-w-0 pr-12">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0">
-                      <p className="break-all font-semibold leading-6 text-[#241b14]">{item.title}</p>
-                      <p className="mt-1">{item.itemKind ?? item.source ?? "file"}</p>
+      <VaultSelectionScope empty={!folders.length && !files.length} scopeLabel="files">
+        <DriveLibraryPanels
+          leftLabel="Folders"
+          rightLabel="Files"
+          leftCount={folders.length}
+          rightCount={files.length}
+          leftPanel={
+          <div className="min-w-0 rounded-[24px] border border-[#ead9c8] bg-[#fffaf2] p-4 sm:rounded-[28px] sm:p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#8b6d52]">Folders</p>
+            <div className="mt-4 grid gap-3">
+              {folders.length === 0 ? (
+                <div className="rounded-2xl bg-[#f4ebe0] px-4 py-4 text-sm text-[#5b4635]">No folders in root yet.</div>
+              ) : (
+                folders.map((folder) => (
+                  <article key={folder.id} data-item-id={folder.id} className="relative min-w-0 rounded-2xl bg-[#f4ebe0] px-4 py-4 text-sm font-semibold text-[#241b14] transition hover:bg-[#eadfce]">
+                    <div className="absolute right-3 top-3">
+                      <VaultItemMenu
+                        item={{
+                          id: folder.id,
+                          section: "drive",
+                          title: folder.name,
+                          subtitle: folder.fullPath,
+                          bytes: 0,
+                          itemKind: "folder",
+                          source: "google-drive",
+                          sourceAccountId: folder.sourceAccountId,
+                          occurredAt: new Date().toISOString(),
+                          unread: false,
+                          meta: { folderPath: folder.parentPath, fullPath: folder.fullPath, fileId: folder.fileId },
+                        }}
+                        redirectTo="/vault/drive"
+                      />
                     </div>
-                    <div className="sm:text-right">
-                      <p className="font-semibold text-[#241b14]">{formatBytes(item.bytes)}</p>
-                      <p className="mt-1 text-xs text-[#8b6d52]">{formatDateTime(item.occurredAt)}</p>
-                    </div>
-                  </div>
-                  </Link>
-                </article>
-              ))
-            )}
+                    <Link href={`/vault/drive/${folder.fullPath.split("/").map(encodeURIComponent).join("/")}`} className="block break-words pr-12 leading-6">
+                      {folder.name}
+                    </Link>
+                  </article>
+                ))
+              )}
+            </div>
           </div>
-        </div>
-        }
-      />
+          }
+          rightPanel={
+          <div className="min-w-0 rounded-[24px] border border-[#ead9c8] bg-[#fffaf2] p-4 sm:rounded-[28px] sm:p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#8b6d52]">Files</p>
+            <div className="mt-4 grid gap-3">
+              {files.length === 0 ? (
+                <div className="rounded-2xl bg-[#f4ebe0] px-4 py-4 text-sm text-[#5b4635]">No root files yet.</div>
+              ) : (
+                files.map((item) => (
+                  <article key={item.id} data-item-id={item.id} className="relative min-w-0 rounded-2xl bg-[#f4ebe0] px-4 py-4 text-sm text-[#5b4635] transition hover:bg-[#eadfce]">
+                    <div className="absolute right-3 top-3">
+                      <VaultItemMenu item={item} redirectTo="/vault/drive" />
+                    </div>
+                    <Link href={`/vault/item/${item.id}`} className="block min-w-0 pr-12">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="break-all font-semibold leading-6 text-[#241b14]">{item.title}</p>
+                        <p className="mt-1">{item.itemKind ?? item.source ?? "file"}</p>
+                      </div>
+                      <div className="sm:text-right">
+                        <p className="font-semibold text-[#241b14]">{formatBytes(item.bytes)}</p>
+                        <p className="mt-1 text-xs text-[#8b6d52]">{formatDateTime(item.occurredAt)}</p>
+                      </div>
+                    </div>
+                    </Link>
+                  </article>
+                ))
+              )}
+            </div>
+          </div>
+          }
+        />
+      </VaultSelectionScope>
     </div>
   );
 }

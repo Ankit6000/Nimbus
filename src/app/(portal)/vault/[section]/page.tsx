@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { saveVaultNoteAction, saveVaultPasswordAction } from "@/app/actions";
 import { GoogleUploadForm } from "@/components/google-upload-form";
 import { PendingSubmitButton } from "@/components/pending-submit-button";
+import { VaultSelectionScope } from "@/components/vault-selection-scope";
 import { VaultItemMenu } from "@/components/vault-item-menu";
 import { VoiceNoteRecorder } from "@/components/voice-note-recorder";
 import { requireUser } from "@/lib/auth";
@@ -147,96 +148,99 @@ export default async function VaultSectionPage({ params }: VaultSectionPageProps
       ) : null}
 
       {key === "photos" ? (
-        <div className="adaptive-media-grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {items.map((item) => {
-            const mimeType = typeof item.meta?.originalType === "string"
-              ? item.meta.originalType
-              : typeof item.meta?.mimeType === "string"
-                ? item.meta.mimeType
-                : "";
-            const proxiedPreview = `/api/vault-file/${item.id}`;
-            const canProxyPreview =
-              typeof item.meta?.storedPath === "string" || typeof item.meta?.fileId === "string";
-            const googleThumbnail =
-              typeof item.meta?.thumbnailLink === "string" && item.meta.thumbnailLink
-                ? item.meta.thumbnailLink
-                : typeof item.meta?.iconLink === "string" && item.meta.iconLink
-                  ? item.meta.iconLink
-                  : null;
-            const previewUrl = canProxyPreview ? proxiedPreview : googleThumbnail;
-            const isVideo = item.itemKind === "video" || mimeType.startsWith("video/");
+        <VaultSelectionScope empty={items.length === 0} scopeLabel="photos">
+          <div className="adaptive-media-grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {items.map((item) => {
+              const mimeType = typeof item.meta?.originalType === "string"
+                ? item.meta.originalType
+                : typeof item.meta?.mimeType === "string"
+                  ? item.meta.mimeType
+                  : "";
+              const proxiedPreview = `/api/vault-file/${item.id}`;
+              const canProxyPreview =
+                typeof item.meta?.storedPath === "string" || typeof item.meta?.fileId === "string";
+              const googleThumbnail =
+                typeof item.meta?.thumbnailLink === "string" && item.meta.thumbnailLink
+                  ? item.meta.thumbnailLink
+                  : typeof item.meta?.iconLink === "string" && item.meta.iconLink
+                    ? item.meta.iconLink
+                    : null;
+              const previewUrl = canProxyPreview ? proxiedPreview : googleThumbnail;
+              const isVideo = item.itemKind === "video" || mimeType.startsWith("video/");
 
-            return (
-              <article
-                key={item.id}
-                data-item-id={item.id}
-                className="group relative min-w-0 overflow-hidden rounded-[24px] border border-[#ead9c8] bg-[#fffaf2] transition hover:-translate-y-1 hover:shadow-xl sm:rounded-[28px]"
-              >
-                <div className="absolute right-3 top-3">
-                  <VaultItemMenu item={item} redirectTo="/vault/photos" />
-                </div>
-                <Link href={`/vault/item/${item.id}`} className="block">
-                <div className="relative aspect-[1/1.08] bg-gradient-to-br from-[#f4c9b4] via-[#f7efe6] to-[#d6e7de] sm:aspect-[4/5]">
-                  {previewUrl && !isVideo ? (
-                    <Image
-                      src={previewUrl}
-                      alt={item.title}
-                      fill
-                      className="object-cover transition duration-300 group-hover:scale-[1.03]"
-                      unoptimized
-                    />
-                  ) : null}
-                  {previewUrl && isVideo && canProxyPreview ? (
-                    <video
-                      src={previewUrl}
-                      className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
-                      muted
-                      playsInline
-                      loop
-                      preload="metadata"
-                      poster={googleThumbnail ?? undefined}
-                    />
-                  ) : null}
-                  {previewUrl && isVideo && !canProxyPreview ? (
-                    <Image
-                      src={previewUrl}
-                      alt={item.title}
-                      fill
-                      className="object-cover transition duration-300 group-hover:scale-[1.03]"
-                      unoptimized
-                    />
-                  ) : null}
-                  {!previewUrl ? (
-                    <div className="flex h-full items-end p-5">
-                      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#8b6d52]">
-                        {item.itemKind ?? "media"}
-                      </p>
+              return (
+                <article
+                  key={item.id}
+                  data-item-id={item.id}
+                  className="group relative min-w-0 overflow-hidden rounded-[24px] border border-[#ead9c8] bg-[#fffaf2] transition hover:-translate-y-1 hover:shadow-xl sm:rounded-[28px]"
+                >
+                  <div className="absolute right-3 top-3">
+                    <VaultItemMenu item={item} redirectTo="/vault/photos" />
+                  </div>
+                  <Link href={`/vault/item/${item.id}`} className="block">
+                  <div className="relative aspect-[1/1.08] bg-gradient-to-br from-[#f4c9b4] via-[#f7efe6] to-[#d6e7de] sm:aspect-[4/5]">
+                    {previewUrl && !isVideo ? (
+                      <Image
+                        src={previewUrl}
+                        alt={item.title}
+                        fill
+                        className="object-cover transition duration-300 group-hover:scale-[1.03]"
+                        unoptimized
+                      />
+                    ) : null}
+                    {previewUrl && isVideo && canProxyPreview ? (
+                      <video
+                        src={previewUrl}
+                        className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+                        muted
+                        playsInline
+                        loop
+                        preload="metadata"
+                        poster={googleThumbnail ?? undefined}
+                      />
+                    ) : null}
+                    {previewUrl && isVideo && !canProxyPreview ? (
+                      <Image
+                        src={previewUrl}
+                        alt={item.title}
+                        fill
+                        className="object-cover transition duration-300 group-hover:scale-[1.03]"
+                        unoptimized
+                      />
+                    ) : null}
+                    {!previewUrl ? (
+                      <div className="flex h-full items-end p-5">
+                        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#8b6d52]">
+                          {item.itemKind ?? "media"}
+                        </p>
+                      </div>
+                    ) : null}
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent p-3.5 text-white sm:p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="line-clamp-2 break-all text-[13px] font-semibold sm:text-sm">{item.title}</p>
+                        <span className="rounded-full bg-white/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]">
+                          {isVideo ? "video" : "photo"}
+                        </span>
+                      </div>
                     </div>
-                  ) : null}
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent p-3.5 text-white sm:p-4">
+                  </div>
+                  <div className="grid gap-1.5 p-3.5 text-sm text-[#5b4635] sm:p-4">
                     <div className="flex items-center justify-between gap-3">
-                      <p className="line-clamp-2 break-all text-[13px] font-semibold sm:text-sm">{item.title}</p>
-                      <span className="rounded-full bg-white/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]">
-                        {isVideo ? "video" : "photo"}
-                      </span>
+                      <p className="truncate font-semibold text-[#241b14]">{formatBytes(item.bytes)}</p>
+                        <p className="truncate text-xs uppercase tracking-[0.16em] text-[#8b6d52]">vault</p>
                     </div>
+                    <p className="text-xs text-[#8b6d52]">{formatDateTime(item.occurredAt)}</p>
                   </div>
-                </div>
-                <div className="grid gap-1.5 p-3.5 text-sm text-[#5b4635] sm:p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="truncate font-semibold text-[#241b14]">{formatBytes(item.bytes)}</p>
-                      <p className="truncate text-xs uppercase tracking-[0.16em] text-[#8b6d52]">vault</p>
-                  </div>
-                  <p className="text-xs text-[#8b6d52]">{formatDateTime(item.occurredAt)}</p>
-                </div>
-                </Link>
-              </article>
-            );
-          })}
-        </div>
+                  </Link>
+                </article>
+              );
+            })}
+          </div>
+        </VaultSelectionScope>
       ) : null}
 
       {key === "videos" ? (
+        <VaultSelectionScope empty={items.length === 0} scopeLabel="videos">
         <div className="adaptive-media-grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {items.map((item) => {
             const poster =
@@ -291,9 +295,11 @@ export default async function VaultSectionPage({ params }: VaultSectionPageProps
             );
           })}
         </div>
+        </VaultSelectionScope>
       ) : null}
 
       {key !== "photos" && key !== "videos" ? (
+        <VaultSelectionScope empty={items.length === 0} scopeLabel={key === "drive" ? "files" : key}>
         <div className="grid gap-4 md:grid-cols-2">
           {items.map((item) => (
             key === "notes" ? (
@@ -410,6 +416,7 @@ export default async function VaultSectionPage({ params }: VaultSectionPageProps
             )
           ))}
         </div>
+        </VaultSelectionScope>
       ) : null}
     </div>
   );

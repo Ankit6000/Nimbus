@@ -16,41 +16,84 @@ export async function POST(request: Request) {
   const payload = (await request.json().catch(() => null)) as
     | {
         itemId?: string;
+        itemIds?: string[];
       }
     | null;
 
   const itemId = typeof payload?.itemId === "string" ? payload.itemId.trim() : "";
+  const itemIds = Array.isArray(payload?.itemIds)
+    ? payload.itemIds
+        .map((value) => (typeof value === "string" ? value.trim() : ""))
+        .filter((value): value is string => Boolean(value))
+    : [];
+  const requestedIds = itemId ? [itemId] : itemIds;
 
-  if (!itemId) {
+  if (!requestedIds.length) {
     return NextResponse.json({ error: "Missing item id." }, { status: 400 });
   }
 
-  const target = await getVaultItemByIdAsync(userId, itemId);
+  const deletedIds = new Set<string>();
+  const failed: Array<{ itemId: string; error: string }> = [];
+  const warnings: string[] = [];
+  let shouldSyncGoogle = false;
 
-  if (!target) {
-    return NextResponse.json({ error: "Item not found." }, { status: 404 });
-  }
+  for (const requestedId of requestedIds) {
+    const target = await getVaultItemByIdAsync(userId, requestedId);
 
-  try {
-    const fileId = typeof target.meta?.fileId === "string" ? target.meta.fileId : null;
-    if (
-      fileId &&
-      target.sourceAccountId &&
-      (target.source?.startsWith("google-drive") || target.source === "google-drive")
-    ) {
-      await deleteGoogleDriveFile(target.sourceAccountId, fileId);
+    if (!target) {
+      failed.push({ itemId: requestedId, error: "Item not found." });
+      continue;
     }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Delete failed.";
-    deleteVaultItemAndRelated(userId, itemId);
-    return NextResponse.json({ ok: true, warning: message });
+
+    const fileId = typeof target.meta?.fileId === "string" ? target.meta.fileId : null;
+
+    try {
+      if (
+        fileId &&
+        target.sourceAccountId &&
+        (target.source?.startsWith("google-drive") || target.source === "google-drive")
+      ) {
+        await deleteGoogleDriveFile(target.sourceAccountId, fileId);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Delete failed.";
+      warnings.push(message);
+    }
+
+    const result = deleteVaultItemAndRelated(userId, requestedId);
+    if (!result) {
+      failed.push({ itemId: requestedId, error: "Item no longer exists." });
+      continue;
+    }
+
+    result.deletedIds.forEach((deletedId) => deletedIds.add(deletedId));
+    if (
+      result.target.section === "drive" ||
+      result.target.section === "photos" ||
+      result.target.section === "videos"
+    ) {
+      shouldSyncGoogle = true;
+    }
   }
 
-  deleteVaultItemAndRelated(userId, itemId);
-
-  if (target.section === "drive" || target.section === "photos" || target.section === "videos") {
+  if (shouldSyncGoogle) {
     await syncAssignedGoogleAccountsForUser(userId).catch(() => null);
   }
 
-  return NextResponse.json({ ok: true });
+  if (!deletedIds.size && failed.length) {
+    return NextResponse.json(
+      {
+        error: failed[0]?.error ?? "Delete failed.",
+        failed,
+      },
+      { status: 400 },
+    );
+  }
+
+  return NextResponse.json({
+    ok: failed.length === 0,
+    deletedIds: Array.from(deletedIds),
+    failed,
+    warning: warnings[0],
+  });
 }

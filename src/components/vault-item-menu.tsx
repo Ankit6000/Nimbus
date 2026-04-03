@@ -41,16 +41,27 @@ export function VaultItemMenu({ item, redirectTo, align = "right" }: VaultItemMe
       body: JSON.stringify({ itemId: item.id }),
     });
 
+    const payload = (await response.json().catch(() => null)) as
+      | {
+          deletedIds?: string[];
+          error?: string;
+        }
+      | null;
+
     if (!response.ok) {
       setDeleting(false);
-      setDeleteError(null);
+      setDeleteError(payload?.error ?? "Delete failed.");
       router.refresh();
       return;
     }
 
-    card?.remove();
-    router.replace(redirectTo);
-    router.refresh();
+    const deletedIds = Array.isArray(payload?.deletedIds) ? payload.deletedIds : [item.id];
+    deletedIds.forEach((deletedId) => {
+      document.querySelectorAll<HTMLElement>(`[data-item-id="${deletedId}"]`).forEach((node) => {
+        node.remove();
+      });
+    });
+    setDeleting(false);
   }
 
   return (

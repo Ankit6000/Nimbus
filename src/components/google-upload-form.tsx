@@ -119,7 +119,7 @@ export function GoogleUploadForm({
   }
 
   async function runUploadQueue(items: UploadQueueItem[]) {
-    const MAX_CONCURRENT_UPLOADS = 4;
+    const MAX_CONCURRENT_UPLOADS = 6;
     const MAX_RETRIES = 2;
     let nextIndex = 0;
     let finalRedirectTo = redirectTo;
