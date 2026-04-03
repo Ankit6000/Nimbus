@@ -86,7 +86,14 @@ export default async function VaultItemPage({ params }: VaultItemPageProps) {
           ) : null}
 
           {hasStoredBinary && isVideo ? (
-            <video src={fileUrl} controls playsInline className="w-full rounded-[28px] bg-black" />
+            <video
+              src={fileUrl}
+              controls
+              playsInline
+              preload="metadata"
+              poster={thumbnailLink ?? undefined}
+              className="w-full rounded-[28px] bg-black"
+            />
           ) : null}
 
           {!hasStoredBinary && thumbnailLink && isVideo ? (

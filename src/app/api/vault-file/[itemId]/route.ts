@@ -13,7 +13,67 @@ type RouteContext = {
   }>;
 };
 
-export async function GET(_request: Request, { params }: RouteContext) {
+function buildMediaResponse(
+  request: Request,
+  buffer: Buffer,
+  mimeType: string,
+  extraHeaders: Record<string, string> = {},
+) {
+  const body = new Uint8Array(buffer);
+  const range = request.headers.get("range");
+
+  if (!range) {
+    return new NextResponse(body, {
+      headers: {
+        "Content-Type": mimeType,
+        "Content-Length": String(buffer.byteLength),
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "private, max-age=60",
+        ...extraHeaders,
+      },
+    });
+  }
+
+  const match = /^bytes=(\d*)-(\d*)$/.exec(range);
+  if (!match) {
+    return new NextResponse("Invalid range", { status: 416 });
+  }
+
+  const total = buffer.byteLength;
+  const start = match[1] ? Number(match[1]) : 0;
+  const end = match[2] ? Number(match[2]) : total - 1;
+
+  if (
+    Number.isNaN(start) ||
+    Number.isNaN(end) ||
+    start < 0 ||
+    end >= total ||
+    start > end
+  ) {
+    return new NextResponse("Range not satisfiable", {
+      status: 416,
+      headers: {
+        "Content-Range": `bytes */${total}`,
+      },
+    });
+  }
+
+  const chunk = body.subarray(start, end + 1);
+
+  return new NextResponse(chunk, {
+    status: 206,
+    headers: {
+      "Content-Type": mimeType,
+      "Content-Length": String(chunk.byteLength),
+      "Content-Range": `bytes ${start}-${end}/${total}`,
+      "Accept-Ranges": "bytes",
+      "Cache-Control": "private, max-age=60",
+      ...extraHeaders,
+    },
+  });
+}
+
+export async function GET(request: Request, { params }: RouteContext) {
   const { itemId } = await params;
   const store = await cookies();
   const userId = store.get(SESSION_COOKIE)?.value;
@@ -37,13 +97,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
         : "application/octet-stream";
     try {
       const file = await readBinaryFile(meta.storedObjectKey);
-      return new NextResponse(file.buffer, {
-        headers: {
-          "Content-Type": mimeType || file.contentType,
-          "Content-Length": String(file.buffer.byteLength),
-          "Cache-Control": "private, max-age=60",
-        },
-      });
+      return buildMediaResponse(request, file.buffer, mimeType || file.contentType);
     } catch {
       return new NextResponse("Stored file is missing.", { status: 404 });
     }
@@ -55,13 +109,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
         ? meta.originalType
         : "application/octet-stream";
     const buffer = fs.readFileSync(meta.storedPath);
-    return new NextResponse(buffer, {
-      headers: {
-        "Content-Type": mimeType,
-        "Content-Length": String(buffer.byteLength),
-        "Cache-Control": "private, max-age=60",
-      },
-    });
+    return buildMediaResponse(request, buffer, mimeType);
   }
 
   if (typeof meta.fileId === "string" && item.sourceAccountId) {
@@ -76,12 +124,8 @@ export async function GET(_request: Request, { params }: RouteContext) {
         return NextResponse.redirect(result.webViewLink);
       }
 
-      return new NextResponse(result.buffer, {
-        headers: {
-          "Content-Type": result.mimeType,
-          "Content-Disposition": `inline; filename="${encodeURIComponent(result.fileName)}"`,
-          "Cache-Control": "private, max-age=60",
-        },
+      return buildMediaResponse(request, result.buffer, result.mimeType, {
+        "Content-Disposition": `inline; filename="${encodeURIComponent(result.fileName)}"`,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to open file.";

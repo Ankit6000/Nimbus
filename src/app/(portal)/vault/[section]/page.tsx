@@ -188,20 +188,9 @@ export default async function VaultSectionPage({ params }: VaultSectionPageProps
                         unoptimized
                       />
                     ) : null}
-                    {previewUrl && isVideo && canProxyPreview ? (
-                      <video
-                        src={previewUrl}
-                        className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
-                        muted
-                        playsInline
-                        loop
-                        preload="metadata"
-                        poster={googleThumbnail ?? undefined}
-                      />
-                    ) : null}
-                    {previewUrl && isVideo && !canProxyPreview ? (
+                    {previewUrl && isVideo ? (
                       <Image
-                        src={previewUrl}
+                        src={googleThumbnail ?? previewUrl}
                         alt={item.title}
                         fill
                         className="object-cover transition duration-300 group-hover:scale-[1.03]"
@@ -263,7 +252,15 @@ export default async function VaultSectionPage({ params }: VaultSectionPageProps
                 </div>
                 <Link href={`/vault/item/${item.id}`} className="block">
                 <div className="relative aspect-[4/5] bg-black">
-                  {previewUrl ? (
+                  {poster ? (
+                    <Image
+                      src={poster}
+                      alt={item.title}
+                      fill
+                      className="object-cover transition duration-300 group-hover:scale-[1.03]"
+                      unoptimized
+                    />
+                  ) : previewUrl ? (
                     <video
                       src={typeof item.meta?.fileId === "string" || typeof item.meta?.storedPath === "string" ? previewUrl : undefined}
                       poster={poster ?? undefined}
