@@ -1216,6 +1216,60 @@ export function deleteVaultItemAndRelated(userId: string, itemId: string) {
   };
 }
 
+export async function deleteVaultItemAndRelatedAsync(userId: string, itemId: string) {
+  const target = await getVaultItemByIdAsync(userId, itemId);
+
+  if (!target) {
+    return null;
+  }
+
+  const relatedIds = new Set<string>([itemId]);
+  const targetFileId = typeof target.meta?.fileId === "string" ? target.meta.fileId : null;
+
+  if (
+    targetFileId &&
+    target.sourceAccountId &&
+    (target.section === "drive" || target.section === "photos" || target.section === "videos")
+  ) {
+    const rows = await dbAll<{ id: string; meta_json: string | null }>(
+      `
+        SELECT id, meta_json
+        FROM vault_items
+        WHERE user_id = ?
+          AND source_account_id = ?
+          AND section IN ('drive', 'photos', 'videos')
+      `,
+      [userId, target.sourceAccountId],
+    );
+
+    for (const row of rows) {
+      const meta = parseMetaJson(row.meta_json);
+      if (typeof meta?.fileId === "string" && meta.fileId === targetFileId) {
+        relatedIds.add(row.id);
+      }
+    }
+  }
+
+  for (const id of relatedIds) {
+    const item = await getVaultItemByIdAsync(userId, id);
+    if (typeof item?.meta?.storedObjectKey === "string") {
+      await deleteBinaryFile(item.meta.storedObjectKey).catch(() => null);
+    }
+    if (typeof item?.meta?.storedPath === "string" && fs.existsSync(item.meta.storedPath)) {
+      fs.unlinkSync(item.meta.storedPath);
+    }
+  }
+
+  for (const id of relatedIds) {
+    await dbRun("DELETE FROM vault_items WHERE user_id = ? AND id = ?", [userId, id]);
+  }
+
+  return {
+    target,
+    deletedIds: Array.from(relatedIds),
+  };
+}
+
 export function upsertVaultNote(input: {
   userId: string;
   itemId?: string;

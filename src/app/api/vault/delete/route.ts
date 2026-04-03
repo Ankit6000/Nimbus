@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { deleteGoogleDriveFile, syncAssignedGoogleAccountsForUser } from "@/lib/google";
-import { deleteVaultItemAndRelated, getVaultItemByIdAsync } from "@/lib/repository";
+import { deleteVaultItemAndRelatedAsync, getVaultItemByIdAsync } from "@/lib/repository";
 
 const SESSION_COOKIE = process.env.NODE_ENV === "production" ? "__Host-nimbus-session" : "nimbus-session";
 
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
       warnings.push(message);
     }
 
-    const result = deleteVaultItemAndRelated(userId, requestedId);
+    const result = await deleteVaultItemAndRelatedAsync(userId, requestedId);
     if (!result) {
       failed.push({ itemId: requestedId, error: "Item no longer exists." });
       continue;
