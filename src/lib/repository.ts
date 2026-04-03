@@ -2223,23 +2223,6 @@ export async function upsertDriveSnapshotAsync(
         `
           INSERT INTO vault_items
           (id, user_id, section, title, subtitle, bytes, item_kind, source, source_account_id, occurred_at, unread, meta_json)
-          VALUES (?, ?, 'photos', ?, ?, ?, 'video', 'google-drive', ?, ?, 0, ?)
-        `,
-        [
-          randomUUID(),
-          account.user_id,
-          item.name,
-          item.sourceLabel,
-          item.size,
-          accountId,
-          item.updatedAt,
-          JSON.stringify(videoMeta),
-        ],
-      );
-      await dbRun(
-        `
-          INSERT INTO vault_items
-          (id, user_id, section, title, subtitle, bytes, item_kind, source, source_account_id, occurred_at, unread, meta_json)
           VALUES (?, ?, 'videos', ?, ?, ?, 'video', 'google-drive', ?, ?, 0, ?)
         `,
         [
