@@ -11,6 +11,39 @@ type UploadQueueItem = {
   error?: string;
 };
 
+const GOOGLE_CHUNK_SIZE = 8 * 1024 * 1024;
+const WHOLE_FILE_UPLOAD_LIMIT = 12 * 1024 * 1024;
+const MAX_RETRIES = 3;
+
+function getConcurrentUploads(items: UploadQueueItem[]) {
+  const totalBytes = items.reduce((sum, item) => sum + item.file.size, 0);
+  const averageBytes = items.length ? totalBytes / items.length : 0;
+  const connection = typeof navigator !== "undefined" ? (navigator as Navigator & {
+    connection?: { downlink?: number; effectiveType?: string };
+  }).connection : undefined;
+  const downlink = connection?.downlink ?? 0;
+  const slowConnection =
+    connection?.effectiveType === "2g" || connection?.effectiveType === "slow-2g";
+
+  if (slowConnection) {
+    return 2;
+  }
+
+  if (averageBytes <= 4 * 1024 * 1024) {
+    return downlink >= 20 ? 10 : 8;
+  }
+
+  if (averageBytes <= 16 * 1024 * 1024) {
+    return downlink >= 20 ? 8 : 6;
+  }
+
+  if (averageBytes <= 48 * 1024 * 1024) {
+    return 4;
+  }
+
+  return 3;
+}
+
 type GoogleUploadFormProps = {
   folderPath: string;
   redirectTo: string;
@@ -75,57 +108,71 @@ export function GoogleUploadForm({
       throw new Error(sessionPayload?.error ?? `Could not start upload for ${item.file.name}.`);
     }
 
-    await new Promise<void>((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      activeRequestsRef.current.set(item.id, xhr);
-      xhr.open("PUT", sessionPayload.uploadUrl!);
-      xhr.setRequestHeader("Content-Type", item.file.type || "application/octet-stream");
-      xhr.upload.onprogress = (progressEvent) => {
-        if (!progressEvent.lengthComputable) {
-          return;
-        }
+    const totalBytes = item.file.size;
+    const shouldUploadWholeFile = totalBytes <= WHOLE_FILE_UPLOAD_LIMIT;
 
-        const itemProgress = Math.min(
-          100,
-          Math.round((progressEvent.loaded / progressEvent.total) * 100),
-        );
+    const sendChunk = (blob: Blob, startByte: number, endByte: number) =>
+      new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        activeRequestsRef.current.set(item.id, xhr);
+        xhr.open("PUT", sessionPayload.uploadUrl!);
+        xhr.setRequestHeader("Content-Type", item.file.type || "application/octet-stream");
+        xhr.setRequestHeader("Content-Range", `bytes ${startByte}-${endByte - 1}/${totalBytes}`);
+        xhr.upload.onprogress = (progressEvent) => {
+          const uploadedBytes = startByte + progressEvent.loaded;
+          const itemProgress = Math.min(100, Math.round((uploadedBytes / totalBytes) * 100));
 
-        setQueueItems((current) =>
-          current.map((entry) =>
-            entry.id === item.id ? { ...entry, progress: itemProgress } : entry,
-          ),
-        );
-      };
-      xhr.onload = () => {
-        activeRequestsRef.current.delete(item.id);
-        if (xhr.status >= 200 && xhr.status < 300) {
-          resolve();
-          return;
-        }
-
-        let message = `Upload failed for ${item.file.name}.`;
-        try {
-          const parsed = JSON.parse(xhr.responseText) as { error?: { message?: string } };
-          message = parsed?.error?.message || message;
-        } catch {
-          if (xhr.responseText) {
-            message = xhr.responseText;
+          setQueueItems((current) =>
+            current.map((entry) =>
+              entry.id === item.id ? { ...entry, progress: itemProgress } : entry,
+            ),
+          );
+        };
+        xhr.onload = () => {
+          activeRequestsRef.current.delete(item.id);
+          if (xhr.status === 308 || (xhr.status >= 200 && xhr.status < 300)) {
+            resolve();
+            return;
           }
+
+          let message = `Upload failed for ${item.file.name}.`;
+          try {
+            const parsed = JSON.parse(xhr.responseText) as { error?: { message?: string } };
+            message = parsed?.error?.message || message;
+          } catch {
+            if (xhr.responseText) {
+              message = xhr.responseText;
+            }
+          }
+          reject(new Error(message));
+        };
+        xhr.onerror = () => {
+          activeRequestsRef.current.delete(item.id);
+          reject(new Error(`Network error while uploading ${item.file.name}.`));
+        };
+        xhr.onabort = () => {
+          activeRequestsRef.current.delete(item.id);
+          const canceledError = new Error(`Canceled ${item.file.name}.`);
+          canceledError.name = "UploadCanceledError";
+          reject(canceledError);
+        };
+        xhr.send(blob);
+      });
+
+    if (shouldUploadWholeFile) {
+      await sendChunk(item.file, 0, totalBytes);
+    } else {
+      for (let startByte = 0; startByte < totalBytes; startByte += GOOGLE_CHUNK_SIZE) {
+        if (canceledIdsRef.current.has(item.id)) {
+          const canceledError = new Error(`Canceled ${item.file.name}.`);
+          canceledError.name = "UploadCanceledError";
+          throw canceledError;
         }
-        reject(new Error(message));
-      };
-      xhr.onerror = () => {
-        activeRequestsRef.current.delete(item.id);
-        reject(new Error(`Network error while uploading ${item.file.name}.`));
-      };
-      xhr.onabort = () => {
-        activeRequestsRef.current.delete(item.id);
-        const canceledError = new Error(`Canceled ${item.file.name}.`);
-        canceledError.name = "UploadCanceledError";
-        reject(canceledError);
-      };
-      xhr.send(item.file);
-    });
+
+        const endByte = Math.min(totalBytes, startByte + GOOGLE_CHUNK_SIZE);
+        await sendChunk(item.file.slice(startByte, endByte), startByte, endByte);
+      }
+    }
 
     return {
       redirectTo,
@@ -146,8 +193,7 @@ export function GoogleUploadForm({
   }
 
   async function runUploadQueue(items: UploadQueueItem[]) {
-    const MAX_CONCURRENT_UPLOADS = 6;
-    const MAX_RETRIES = 2;
+    const maxConcurrentUploads = getConcurrentUploads(items);
     let nextIndex = 0;
     let finalRedirectTo = redirectTo;
     let successCount = 0;
@@ -233,6 +279,17 @@ export function GoogleUploadForm({
               uploadError instanceof Error ? uploadError.message : "Upload failed.";
 
             if (attempt <= MAX_RETRIES) {
+              const lowerMessage = message.toLowerCase();
+              const isRateLimited =
+                lowerMessage.includes("429") ||
+                lowerMessage.includes("rate") ||
+                lowerMessage.includes("quota");
+              const isServerFailure =
+                lowerMessage.includes("500") ||
+                lowerMessage.includes("502") ||
+                lowerMessage.includes("503") ||
+                lowerMessage.includes("504");
+
               setQueueItems((current) => {
                 const nextItems = current.map((entry) =>
                   entry.id === item.id
@@ -242,7 +299,8 @@ export function GoogleUploadForm({
                 updateOverallProgress(nextItems);
                 return nextItems;
               });
-              await new Promise((resolve) => setTimeout(resolve, 700 * attempt));
+              const retryDelay = isRateLimited || isServerFailure ? 500 * attempt : 200 * attempt;
+              await new Promise((resolve) => setTimeout(resolve, retryDelay));
               continue;
             }
 
@@ -262,7 +320,7 @@ export function GoogleUploadForm({
     };
 
     await Promise.all(
-      Array.from({ length: Math.min(MAX_CONCURRENT_UPLOADS, items.length) }, () => worker()),
+      Array.from({ length: Math.min(maxConcurrentUploads, items.length) }, () => worker()),
     );
 
     if (successCount > 0) {
