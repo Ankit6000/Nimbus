@@ -79,6 +79,24 @@ export type DriveFolderRecord = {
   fileId: string | null;
 };
 
+function dedupeDriveFolders(folders: DriveFolderRecord[]) {
+  const seen = new Map<string, DriveFolderRecord>();
+
+  for (const folder of folders) {
+    if (!folder.fullPath) {
+      continue;
+    }
+
+    if (!seen.has(folder.fullPath)) {
+      seen.set(folder.fullPath, folder);
+    }
+  }
+
+  return Array.from(seen.values()).sort((left, right) =>
+    left.name.localeCompare(right.name, undefined, { sensitivity: "base" }),
+  );
+}
+
 type ConnectedGoogleUploadTarget = {
   id: string;
   user_id: string;
@@ -1053,7 +1071,8 @@ export function listDriveFoldersAtPath(userId: string, folderPath: string) {
     meta_json: string | null;
   }>;
 
-  return rows
+  return dedupeDriveFolders(
+    rows
     .map((row) => {
       const meta = parseMetaJson(row.meta_json);
       const fullPath = typeof meta?.fullPath === "string" ? meta.fullPath : "";
@@ -1068,7 +1087,8 @@ export function listDriveFoldersAtPath(userId: string, folderPath: string) {
         fileId: typeof meta?.fileId === "string" ? meta.fileId : null,
       } satisfies DriveFolderRecord;
     })
-    .filter((folder) => folder.parentPath === folderPath);
+    .filter((folder) => folder.parentPath === folderPath),
+  );
 }
 
 export async function listDriveFoldersAtPathAsync(userId: string, folderPath: string) {
@@ -1086,7 +1106,8 @@ export async function listDriveFoldersAtPathAsync(userId: string, folderPath: st
     [userId],
   );
 
-  return rows
+  return dedupeDriveFolders(
+    rows
     .map((row) => {
       const meta = parseMetaJson(row.meta_json);
       const fullPath = typeof meta?.fullPath === "string" ? meta.fullPath : "";
@@ -1101,7 +1122,8 @@ export async function listDriveFoldersAtPathAsync(userId: string, folderPath: st
         fileId: typeof meta?.fileId === "string" ? meta.fileId : null,
       } satisfies DriveFolderRecord;
     })
-    .filter((folder) => folder.parentPath === folderPath);
+    .filter((folder) => folder.parentPath === folderPath),
+  );
 }
 
 export function listDriveFilesAtPath(userId: string, folderPath: string) {
