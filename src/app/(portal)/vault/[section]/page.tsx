@@ -178,7 +178,7 @@ export default async function VaultSectionPage({ params }: VaultSectionPageProps
                     <VaultItemMenu item={item} redirectTo="/vault/photos" />
                   </div>
                   <Link href={`/vault/item/${item.id}`} className="block">
-                  <div className="relative aspect-[1/1.08] bg-gradient-to-br from-[#f4c9b4] via-[#f7efe6] to-[#d6e7de] sm:aspect-[4/5]">
+                  <div className="relative aspect-[4/5] bg-gradient-to-br from-[#f4c9b4] via-[#f7efe6] to-[#d6e7de]">
                     {previewUrl && !isVideo ? (
                       <Image
                         src={previewUrl}
@@ -215,21 +215,21 @@ export default async function VaultSectionPage({ params }: VaultSectionPageProps
                         </p>
                       </div>
                     ) : null}
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent p-3.5 text-white sm:p-4">
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent p-2.5 text-white sm:p-4">
                       <div className="flex items-center justify-between gap-3">
-                        <p className="line-clamp-2 break-all text-[13px] font-semibold sm:text-sm">{item.title}</p>
-                        <span className="rounded-full bg-white/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]">
+                        <p className="line-clamp-2 break-all text-[11px] font-semibold leading-4 sm:text-sm">{item.title}</p>
+                        <span className="rounded-full bg-white/20 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.16em] sm:px-2.5 sm:text-[10px]">
                           {isVideo ? "video" : "photo"}
                         </span>
                       </div>
                     </div>
                   </div>
-                  <div className="grid gap-1.5 p-3.5 text-sm text-[#5b4635] sm:p-4">
+                  <div className="grid gap-1 p-2.5 text-sm text-[#5b4635] sm:p-4">
                     <div className="flex items-center justify-between gap-3">
-                      <p className="truncate font-semibold text-[#241b14]">{formatBytes(item.bytes)}</p>
-                        <p className="truncate text-xs uppercase tracking-[0.16em] text-[#8b6d52]">vault</p>
+                      <p className="truncate text-[13px] font-semibold text-[#241b14] sm:text-sm">{formatBytes(item.bytes)}</p>
+                        <p className="truncate text-[10px] uppercase tracking-[0.14em] text-[#8b6d52] sm:text-xs sm:tracking-[0.16em]">vault</p>
                     </div>
-                    <p className="text-xs text-[#8b6d52]">{formatDateTime(item.occurredAt)}</p>
+                    <p className="text-[10px] text-[#8b6d52] sm:text-xs">{formatDateTime(item.occurredAt)}</p>
                   </div>
                   </Link>
                 </article>
@@ -262,7 +262,7 @@ export default async function VaultSectionPage({ params }: VaultSectionPageProps
                   <VaultItemMenu item={item} redirectTo="/vault/videos" />
                 </div>
                 <Link href={`/vault/item/${item.id}`} className="block">
-                <div className="relative aspect-[16/10] bg-black sm:aspect-[4/5]">
+                <div className="relative aspect-[4/5] bg-black">
                   {previewUrl ? (
                     <video
                       src={typeof item.meta?.fileId === "string" || typeof item.meta?.storedPath === "string" ? previewUrl : undefined}
@@ -274,21 +274,21 @@ export default async function VaultSectionPage({ params }: VaultSectionPageProps
                       preload="metadata"
                     />
                   ) : null}
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent p-3.5 text-white sm:p-4">
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent p-2.5 text-white sm:p-4">
                     <div className="flex items-center justify-between gap-3">
-                      <p className="line-clamp-2 break-all text-[13px] font-semibold sm:text-sm">{item.title}</p>
-                      <span className="rounded-full bg-white/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]">
+                      <p className="line-clamp-2 break-all text-[11px] font-semibold leading-4 sm:text-sm">{item.title}</p>
+                      <span className="rounded-full bg-white/20 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.16em] sm:px-2.5 sm:text-[10px]">
                         video
                       </span>
                     </div>
                   </div>
                 </div>
-                <div className="grid gap-1.5 p-3.5 text-sm text-[#5b4635] sm:p-4">
+                <div className="grid gap-1 p-2.5 text-sm text-[#5b4635] sm:p-4">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="truncate font-semibold text-[#241b14]">{formatBytes(item.bytes)}</p>
-                    <p className="truncate text-xs uppercase tracking-[0.16em] text-[#8b6d52]">vault</p>
+                    <p className="truncate text-[13px] font-semibold text-[#241b14] sm:text-sm">{formatBytes(item.bytes)}</p>
+                    <p className="truncate text-[10px] uppercase tracking-[0.14em] text-[#8b6d52] sm:text-xs sm:tracking-[0.16em]">vault</p>
                   </div>
-                  <p className="text-xs text-[#8b6d52]">{formatDateTime(item.occurredAt)}</p>
+                  <p className="text-[10px] text-[#8b6d52] sm:text-xs">{formatDateTime(item.occurredAt)}</p>
                 </div>
                 </Link>
               </article>
