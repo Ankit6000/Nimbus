@@ -149,7 +149,7 @@ export default async function VaultSectionPage({ params }: VaultSectionPageProps
 
       {key === "photos" ? (
         <VaultSelectionScope empty={items.length === 0} scopeLabel="photos">
-          <div className="adaptive-media-grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="adaptive-media-grid">
             {items.map((item) => {
               const mimeType = typeof item.meta?.originalType === "string"
                 ? item.meta.originalType
@@ -241,7 +241,7 @@ export default async function VaultSectionPage({ params }: VaultSectionPageProps
 
       {key === "videos" ? (
         <VaultSelectionScope empty={items.length === 0} scopeLabel="videos">
-        <div className="adaptive-media-grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="adaptive-media-grid">
           {items.map((item) => {
             const poster =
               typeof item.meta?.thumbnailLink === "string" && item.meta.thumbnailLink
