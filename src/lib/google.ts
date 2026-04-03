@@ -8,6 +8,7 @@ import {
 } from "@/lib/file-types";
 import {
   createVaultAudioNoteRecordAsync,
+  createSyncRunAsync,
   getPreferredGoogleUploadTargetsAsync,
   getVaultItemByIdAsync,
   getDriveFolderMetaByPathAsync,
@@ -105,6 +106,26 @@ async function getWritableGoogleTarget(userId: string, preferredAccountId?: stri
     ...target,
     refresh_token: target.refresh_token,
   };
+}
+
+async function getGoogleUploadTargetForFile(userId: string, folderPath: string, fileSize: number) {
+  const preferredTargets = folderPath ? [] : await getPreferredGoogleUploadTargetsAsync(userId);
+
+  const target = folderPath
+    ? await getGoogleUploadTargetForPathAsync(userId, folderPath)
+    : preferredTargets.find((candidate) => {
+        const totalBytes =
+          typeof candidate.total_bytes === "number" && candidate.total_bytes > 0
+            ? candidate.total_bytes
+            : Number.POSITIVE_INFINITY;
+        return totalBytes - candidate.used_bytes >= fileSize;
+      }) ?? null;
+
+  if (!target?.refresh_token) {
+    throw new Error("No connected hidden Google accounts are ready for Drive uploads yet.");
+  }
+
+  return target;
 }
 
 function getGoogleConfig() {
@@ -560,6 +581,76 @@ export async function uploadFilesToConnectedGoogleDrive(
     // and let them manually refresh if the follow-up sync has a temporary issue.
   }
   return uploaded;
+}
+
+export async function createGoogleDriveUploadSession(input: {
+  userId: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  folderPath?: string;
+}) {
+  const folderPath = input.folderPath?.trim() ?? "";
+  const target = await getGoogleUploadTargetForFile(input.userId, folderPath, input.fileSize);
+  const auth = createOAuthClient(target.refresh_token);
+  const accessToken = (await auth.getAccessToken()).token;
+
+  if (!accessToken) {
+    throw new Error("Google did not return an access token for upload.");
+  }
+
+  const parentId = await ensureGoogleFolderPath(input.userId, target.id, folderPath, auth);
+  const response = await fetch(
+    "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json; charset=UTF-8",
+        "X-Upload-Content-Type": input.mimeType || "application/octet-stream",
+        "X-Upload-Content-Length": String(input.fileSize),
+      },
+      body: JSON.stringify({
+        name: input.fileName,
+        parents: parentId ? [parentId] : undefined,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const message = await response.text().catch(() => "");
+    throw new Error(message || "Could not create Google Drive upload session.");
+  }
+
+  const uploadUrl = response.headers.get("location");
+
+  if (!uploadUrl) {
+    throw new Error("Google Drive did not return a resumable upload URL.");
+  }
+
+  return {
+    uploadUrl,
+    accountId: target.id,
+  };
+}
+
+export async function finalizeGoogleDriveUploads(userId: string, uploadedCount: number) {
+  try {
+    await syncAssignedGoogleAccountsForUser(userId);
+  } catch {
+    // The direct upload already succeeded in Google Drive; ignore sync-only issues.
+  }
+
+  await createSyncRunAsync(
+    userId,
+    "google-upload",
+    uploadedCount > 0 ? "success" : "skipped",
+    uploadedCount > 0
+      ? `Uploaded ${uploadedCount} file(s) directly into the connected Google Drive pool.`
+      : "No files were uploaded.",
+  );
+
+  return uploadedCount;
 }
 
 export async function createGoogleDriveFolder(userId: string, folderName: string, parentFolderPath = "") {

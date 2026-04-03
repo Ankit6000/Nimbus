@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 type UploadQueueItem = {
   id: string;
   file: File;
-  status: "queued" | "uploading" | "retrying" | "success" | "error";
+  status: "queued" | "uploading" | "retrying" | "success" | "error" | "canceled";
   attempts: number;
   progress: number;
   error?: string;
@@ -31,6 +31,8 @@ export function GoogleUploadForm({
   buttonLabel,
 }: GoogleUploadFormProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const activeRequestsRef = useRef<Map<string, XMLHttpRequest>>(new Map());
+  const canceledIdsRef = useRef<Set<string>>(new Set());
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -49,15 +51,35 @@ export function GoogleUploadForm({
   }
 
   async function uploadSingleFile(item: UploadQueueItem) {
-    const formData = new FormData();
-    formData.set("folderPath", folderPath);
-    formData.set("redirectTo", redirectTo);
-    formData.append("files", item.file);
+    const sessionResponse = await fetch("/api/vault/upload/session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        folderPath,
+        fileName: item.file.name,
+        fileSize: item.file.size,
+        mimeType: item.file.type,
+      }),
+    });
 
-    const response = await new Promise<XMLHttpRequest>((resolve, reject) => {
+    const sessionPayload = (await sessionResponse.json().catch(() => null)) as
+      | {
+          uploadUrl?: string;
+          error?: string;
+        }
+      | null;
+
+    if (!sessionResponse.ok || !sessionPayload?.uploadUrl) {
+      throw new Error(sessionPayload?.error ?? `Could not start upload for ${item.file.name}.`);
+    }
+
+    await new Promise<void>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      xhr.open("POST", "/api/vault/upload");
-      xhr.responseType = "json";
+      activeRequestsRef.current.set(item.id, xhr);
+      xhr.open("PUT", sessionPayload.uploadUrl!);
+      xhr.setRequestHeader("Content-Type", item.file.type || "application/octet-stream");
       xhr.upload.onprogress = (progressEvent) => {
         if (!progressEvent.lengthComputable) {
           return;
@@ -74,40 +96,45 @@ export function GoogleUploadForm({
           ),
         );
       };
-      xhr.onload = () => resolve(xhr);
-      xhr.onerror = () =>
+      xhr.onload = () => {
+        activeRequestsRef.current.delete(item.id);
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+          return;
+        }
+
+        let message = `Upload failed for ${item.file.name}.`;
+        try {
+          const parsed = JSON.parse(xhr.responseText) as { error?: { message?: string } };
+          message = parsed?.error?.message || message;
+        } catch {
+          if (xhr.responseText) {
+            message = xhr.responseText;
+          }
+        }
+        reject(new Error(message));
+      };
+      xhr.onerror = () => {
+        activeRequestsRef.current.delete(item.id);
         reject(new Error(`Network error while uploading ${item.file.name}.`));
-      xhr.send(formData);
+      };
+      xhr.onabort = () => {
+        activeRequestsRef.current.delete(item.id);
+        const canceledError = new Error(`Canceled ${item.file.name}.`);
+        canceledError.name = "UploadCanceledError";
+        reject(canceledError);
+      };
+      xhr.send(item.file);
     });
 
-    if (response.status < 200 || response.status >= 300) {
-      if (response.status === 413) {
-        throw new Error(
-          `${item.file.name} is still too large for one Vercel upload request.`,
-        );
-      }
-
-      const payload =
-        typeof response.response === "object" && response.response
-          ? (response.response as { error?: string })
-          : null;
-
-      throw new Error(payload?.error ?? `Upload failed for ${item.file.name}.`);
-    }
-
-    const payload =
-      typeof response.response === "object" && response.response
-        ? (response.response as { redirectTo?: string })
-        : null;
-
     return {
-      redirectTo: payload?.redirectTo || redirectTo,
+      redirectTo,
     };
   }
 
   function updateOverallProgress(nextItems: UploadQueueItem[]) {
     const completedCount = nextItems.filter(
-      (item) => item.status === "success" || item.status === "error",
+      (item) => item.status === "success" || item.status === "error" || item.status === "canceled",
     ).length;
     const inFlightProgress = nextItems
       .filter((item) => item.status === "uploading" || item.status === "retrying")
@@ -125,6 +152,7 @@ export function GoogleUploadForm({
     let finalRedirectTo = redirectTo;
     let successCount = 0;
     let failedCount = 0;
+    let canceledCount = 0;
 
     const worker = async () => {
       while (true) {
@@ -136,8 +164,26 @@ export function GoogleUploadForm({
         }
 
         const item = items[currentIndex];
+        if (canceledIdsRef.current.has(item.id)) {
+          canceledCount += 1;
+          continue;
+        }
 
         for (let attempt = 1; attempt <= MAX_RETRIES + 1; attempt += 1) {
+          if (canceledIdsRef.current.has(item.id)) {
+            setQueueItems((current) => {
+              const nextItems = current.map((entry) =>
+                entry.id === item.id
+                  ? { ...entry, status: "canceled" as const, progress: 0, error: undefined }
+                  : entry,
+              );
+              updateOverallProgress(nextItems);
+              return nextItems;
+            });
+            canceledCount += 1;
+            break;
+          }
+
           setQueueItems((current) => {
             const nextItems = current.map((entry) =>
               entry.id === item.id
@@ -169,6 +215,20 @@ export function GoogleUploadForm({
             successCount += 1;
             break;
           } catch (uploadError) {
+            if (uploadError instanceof Error && uploadError.name === "UploadCanceledError") {
+              setQueueItems((current) => {
+                const nextItems = current.map((entry) =>
+                  entry.id === item.id
+                    ? { ...entry, status: "canceled" as const, progress: 0, error: undefined }
+                    : entry,
+                );
+                updateOverallProgress(nextItems);
+                return nextItems;
+              });
+              canceledCount += 1;
+              break;
+            }
+
             const message =
               uploadError instanceof Error ? uploadError.message : "Upload failed.";
 
@@ -205,17 +265,42 @@ export function GoogleUploadForm({
       Array.from({ length: Math.min(MAX_CONCURRENT_UPLOADS, items.length) }, () => worker()),
     );
 
+    if (successCount > 0) {
+      const finalizeResponse = await fetch("/api/vault/upload/finalize", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          uploadedCount: successCount,
+          redirectTo,
+        }),
+      });
+
+      const finalizePayload = (await finalizeResponse.json().catch(() => null)) as
+        | {
+            redirectTo?: string;
+          }
+        | null;
+
+      if (finalizeResponse.ok && finalizePayload?.redirectTo) {
+        finalRedirectTo = finalizePayload.redirectTo;
+      }
+    }
+
     setUploading(false);
     setQueueItems((current) => {
       setSummary(
         failedCount > 0
-          ? `${successCount} uploaded, ${failedCount} failed.`
-          : `Uploaded ${successCount} file${successCount === 1 ? "" : "s"}.`,
+          ? `${successCount} uploaded, ${failedCount} failed${canceledCount > 0 ? `, ${canceledCount} canceled` : ""}.`
+          : canceledCount > 0
+            ? `${successCount} uploaded, ${canceledCount} canceled.`
+            : `Uploaded ${successCount} file${successCount === 1 ? "" : "s"}.`,
       );
       return current;
     });
 
-    if (failedCount === 0) {
+    if (successCount > 0 && failedCount === 0) {
       window.location.assign(finalRedirectTo);
     }
   }
@@ -226,6 +311,8 @@ export function GoogleUploadForm({
     setError(null);
     setSummary(null);
     setQueueOpen(true);
+    canceledIdsRef.current.clear();
+    activeRequestsRef.current.clear();
 
     const items = createQueueItems(files);
     setQueueItems(items);
@@ -264,6 +351,40 @@ export function GoogleUploadForm({
     }
 
     await startUpload(failedFiles);
+  }
+
+  function cancelItem(itemId: string) {
+    canceledIdsRef.current.add(itemId);
+    activeRequestsRef.current.get(itemId)?.abort();
+    activeRequestsRef.current.delete(itemId);
+    setQueueItems((current) => {
+      const nextItems = current.map((entry) =>
+        entry.id === itemId && (entry.status === "queued" || entry.status === "uploading" || entry.status === "retrying")
+          ? { ...entry, status: "canceled" as const, progress: 0, error: undefined }
+          : entry,
+      );
+      updateOverallProgress(nextItems);
+      return nextItems;
+    });
+  }
+
+  function cancelAll() {
+    queueItems.forEach((item) => {
+      if (item.status === "queued" || item.status === "uploading" || item.status === "retrying") {
+        canceledIdsRef.current.add(item.id);
+        activeRequestsRef.current.get(item.id)?.abort();
+      }
+    });
+    activeRequestsRef.current.clear();
+    setQueueItems((current) => {
+      const nextItems = current.map((entry) =>
+        entry.status === "queued" || entry.status === "uploading" || entry.status === "retrying"
+          ? { ...entry, status: "canceled" as const, progress: 0, error: undefined }
+          : entry,
+      );
+      updateOverallProgress(nextItems);
+      return nextItems;
+    });
   }
 
   return (
@@ -307,6 +428,15 @@ export function GoogleUploadForm({
               </span>
             </button>
             <div className="flex items-center gap-2">
+              {uploading ? (
+                <button
+                  type="button"
+                  onClick={cancelAll}
+                  className="rounded-full border border-[#d8c0ae] bg-white px-3 py-1.5 text-xs font-semibold text-[#3b2d20]"
+                >
+                  Cancel All
+                </button>
+              ) : null}
               {queueItems.some((item) => item.status === "error") && !uploading ? (
                 <button
                   type="button"
@@ -333,6 +463,8 @@ export function GoogleUploadForm({
                           ? "bg-[#d8ecdf] text-[#335443]"
                           : item.status === "error"
                             ? "bg-[#f7e1dc] text-[#7b3d31]"
+                            : item.status === "canceled"
+                              ? "bg-[#ece7e0] text-[#6e6256]"
                             : item.status === "retrying"
                               ? "bg-[#f5ecdf] text-[#7a5a3e]"
                               : "bg-[#ede3d6] text-[#6c5440]"
@@ -348,9 +480,22 @@ export function GoogleUploadForm({
                         ? "Done"
                         : item.status === "error"
                           ? "Failed"
+                          : item.status === "canceled"
+                            ? "Canceled"
                           : `${item.progress}%`}
                     </span>
                   </div>
+                  {item.status === "queued" || item.status === "uploading" || item.status === "retrying" ? (
+                    <div className="mt-2 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => cancelItem(item.id)}
+                        className="rounded-full border border-[#d8c0ae] bg-white px-3 py-1 text-[11px] font-semibold text-[#3b2d20]"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : null}
                   {item.error ? <p className="mt-2 text-xs text-[#b54222]">{item.error}</p> : null}
                 </div>
               ))}
