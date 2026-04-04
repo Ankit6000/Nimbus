@@ -12,7 +12,6 @@ type UploadQueueItem = {
 };
 
 const GOOGLE_CHUNK_SIZE = 3 * 1024 * 1024;
-const WHOLE_FILE_UPLOAD_LIMIT = 12 * 1024 * 1024;
 const MAX_RETRIES = 3;
 
 function getConcurrentUploads(items: UploadQueueItem[]) {
@@ -109,7 +108,6 @@ export function GoogleUploadForm({
     }
 
     const totalBytes = item.file.size;
-    const shouldUploadWholeFile = totalBytes <= WHOLE_FILE_UPLOAD_LIMIT;
 
     const sendChunk = (blob: Blob, startByte: number, endByte: number) =>
       new Promise<void>((resolve, reject) => {
@@ -163,19 +161,15 @@ export function GoogleUploadForm({
         xhr.send(blob);
       });
 
-    if (shouldUploadWholeFile) {
-      await sendChunk(item.file, 0, totalBytes);
-    } else {
-      for (let startByte = 0; startByte < totalBytes; startByte += GOOGLE_CHUNK_SIZE) {
-        if (canceledIdsRef.current.has(item.id)) {
-          const canceledError = new Error(`Canceled ${item.file.name}.`);
-          canceledError.name = "UploadCanceledError";
-          throw canceledError;
-        }
-
-        const endByte = Math.min(totalBytes, startByte + GOOGLE_CHUNK_SIZE);
-        await sendChunk(item.file.slice(startByte, endByte), startByte, endByte);
+    for (let startByte = 0; startByte < totalBytes; startByte += GOOGLE_CHUNK_SIZE) {
+      if (canceledIdsRef.current.has(item.id)) {
+        const canceledError = new Error(`Canceled ${item.file.name}.`);
+        canceledError.name = "UploadCanceledError";
+        throw canceledError;
       }
+
+      const endByte = Math.min(totalBytes, startByte + GOOGLE_CHUNK_SIZE);
+      await sendChunk(item.file.slice(startByte, endByte), startByte, endByte);
     }
 
     return {
