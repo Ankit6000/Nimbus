@@ -112,11 +112,14 @@ export function GoogleUploadForm({
     const sendChunk = (blob: Blob, startByte: number, endByte: number) =>
       new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
+        let uploadedChunkBytes = 0;
+        let chunkBodySent = false;
         activeRequestsRef.current.set(item.id, xhr);
         xhr.open("PUT", sessionPayload.uploadUrl!);
         xhr.setRequestHeader("Content-Type", item.file.type || "application/octet-stream");
         xhr.setRequestHeader("Content-Range", `bytes ${startByte}-${endByte - 1}/${totalBytes}`);
         xhr.upload.onprogress = (progressEvent) => {
+          uploadedChunkBytes = progressEvent.loaded;
           const uploadedBytes = startByte + progressEvent.loaded;
           const itemProgress = Math.min(100, Math.round((uploadedBytes / totalBytes) * 100));
 
@@ -125,6 +128,9 @@ export function GoogleUploadForm({
               entry.id === item.id ? { ...entry, progress: itemProgress } : entry,
             ),
           );
+        };
+        xhr.upload.onload = () => {
+          chunkBodySent = true;
         };
         xhr.onload = () => {
           activeRequestsRef.current.delete(item.id);
@@ -149,6 +155,19 @@ export function GoogleUploadForm({
         };
         xhr.onerror = () => {
           activeRequestsRef.current.delete(item.id);
+          const isFinalChunk = endByte >= totalBytes;
+          const wasChunkSent = chunkBodySent || uploadedChunkBytes >= blob.size;
+
+          if (isFinalChunk && wasChunkSent) {
+            setQueueItems((current) =>
+              current.map((entry) =>
+                entry.id === item.id ? { ...entry, progress: 100 } : entry,
+              ),
+            );
+            resolve();
+            return;
+          }
+
           reject(new Error(`Google direct upload failed for ${item.file.name}.`));
         };
         xhr.onabort = () => {
