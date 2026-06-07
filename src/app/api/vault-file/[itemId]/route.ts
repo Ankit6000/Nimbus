@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { loadGoogleDriveFile } from "@/lib/google";
+import { createGoogleDriveMediaRequest } from "@/lib/google";
 import { getVaultItemByIdAsync } from "@/lib/repository";
 import { readBinaryFile } from "@/lib/storage";
 
@@ -114,7 +114,11 @@ export async function GET(request: Request, { params }: RouteContext) {
 
   if (typeof meta.fileId === "string" && item.sourceAccountId) {
     try {
-      const result = await loadGoogleDriveFile(item.sourceAccountId, meta.fileId);
+      const result = await createGoogleDriveMediaRequest(
+        item.sourceAccountId,
+        meta.fileId,
+        request.headers.get("range"),
+      );
 
       if (result.kind === "link") {
         if (!result.webViewLink) {
@@ -124,8 +128,26 @@ export async function GET(request: Request, { params }: RouteContext) {
         return NextResponse.redirect(result.webViewLink);
       }
 
-      return buildMediaResponse(request, result.buffer, result.mimeType, {
-        "Content-Disposition": `inline; filename="${encodeURIComponent(result.fileName)}"`,
+      const headers = new Headers();
+      headers.set("Content-Type", result.response.headers.get("content-type") ?? result.mimeType);
+      headers.set("Accept-Ranges", result.response.headers.get("accept-ranges") ?? "bytes");
+      headers.set("Cache-Control", "private, max-age=60");
+      headers.set("Content-Disposition", `inline; filename="${encodeURIComponent(result.fileName)}"`);
+
+      for (const headerName of ["content-length", "content-range"]) {
+        const value = result.response.headers.get(headerName);
+        if (value) {
+          headers.set(headerName, value);
+        }
+      }
+
+      if (result.size && !headers.has("Content-Length") && !headers.has("Content-Range")) {
+        headers.set("Content-Length", result.size);
+      }
+
+      return new NextResponse(result.response.body, {
+        status: result.response.status,
+        headers,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to open file.";

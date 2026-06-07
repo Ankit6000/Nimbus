@@ -849,6 +849,83 @@ export async function loadGoogleDriveFile(accountId: string, fileId: string) {
   };
 }
 
+export async function createGoogleDriveMediaRequest(accountId: string, fileId: string, range?: string | null) {
+  const account = await getSourceGoogleAccountByIdAsync(accountId);
+
+  if (!account?.refresh_token) {
+    throw new Error("Connected Google account not found for this file.");
+  }
+
+  const auth = createOAuthClient(account.refresh_token);
+  const accessToken = (await auth.getAccessToken()).token;
+
+  if (!accessToken) {
+    throw new Error("Google did not return an access token for this file.");
+  }
+
+  const metadataResponse = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?fields=id,name,mimeType,webViewLink,thumbnailLink,size`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  );
+
+  if (!metadataResponse.ok) {
+    const message = await metadataResponse.text().catch(() => "");
+    throw new Error(message || "Unable to load Google Drive file metadata.");
+  }
+
+  const metadata = (await metadataResponse.json()) as {
+    name?: string;
+    mimeType?: string;
+    webViewLink?: string;
+    thumbnailLink?: string;
+    size?: string;
+  };
+
+  const mimeType = metadata.mimeType ?? "application/octet-stream";
+
+  if (mimeType.startsWith("application/vnd.google-apps")) {
+    return {
+      kind: "link" as const,
+      mimeType,
+      fileName: metadata.name ?? "Google file",
+      webViewLink: metadata.webViewLink ?? null,
+      thumbnailLink: metadata.thumbnailLink ?? null,
+    };
+  }
+
+  const mediaHeaders: Record<string, string> = {
+    Authorization: `Bearer ${accessToken}`,
+  };
+
+  if (range) {
+    mediaHeaders.Range = range;
+  }
+
+  const mediaResponse = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`,
+    {
+      headers: mediaHeaders,
+    },
+  );
+
+  if (!mediaResponse.ok && mediaResponse.status !== 206) {
+    const message = await mediaResponse.text().catch(() => "");
+    throw new Error(message || "Unable to stream Google Drive file.");
+  }
+
+  return {
+    kind: "stream" as const,
+    response: mediaResponse,
+    mimeType,
+    fileName: metadata.name ?? "download",
+    size: metadata.size ?? null,
+  };
+}
+
 export async function deleteGoogleDriveFile(accountId: string, fileId: string) {
   const account = await getSourceGoogleAccountByIdAsync(accountId);
 
