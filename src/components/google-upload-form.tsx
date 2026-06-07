@@ -113,13 +113,9 @@ export function GoogleUploadForm({
       new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         activeRequestsRef.current.set(item.id, xhr);
-        xhr.open("POST", "/api/vault/upload/chunk");
-        xhr.setRequestHeader("Content-Type", "application/octet-stream");
-        xhr.setRequestHeader("x-google-upload-url", sessionPayload.uploadUrl!);
-        xhr.setRequestHeader("x-upload-content-type", item.file.type || "application/octet-stream");
-        xhr.setRequestHeader("x-upload-start", String(startByte));
-        xhr.setRequestHeader("x-upload-end", String(endByte));
-        xhr.setRequestHeader("x-upload-total", String(totalBytes));
+        xhr.open("PUT", sessionPayload.uploadUrl!);
+        xhr.setRequestHeader("Content-Type", item.file.type || "application/octet-stream");
+        xhr.setRequestHeader("Content-Range", `bytes ${startByte}-${endByte - 1}/${totalBytes}`);
         xhr.upload.onprogress = (progressEvent) => {
           const uploadedBytes = startByte + progressEvent.loaded;
           const itemProgress = Math.min(100, Math.round((uploadedBytes / totalBytes) * 100));
@@ -132,15 +128,18 @@ export function GoogleUploadForm({
         };
         xhr.onload = () => {
           activeRequestsRef.current.delete(item.id);
-          if (xhr.status >= 200 && xhr.status < 300) {
+          if (xhr.status === 308 || (xhr.status >= 200 && xhr.status < 300)) {
             resolve();
             return;
           }
 
           let message = `Upload failed for ${item.file.name}.`;
           try {
-            const parsed = JSON.parse(xhr.responseText) as { error?: { message?: string } };
-            message = parsed?.error?.message || message;
+            const parsed = JSON.parse(xhr.responseText) as { error?: { message?: string } | string };
+            message =
+              typeof parsed?.error === "string"
+                ? parsed.error
+                : parsed?.error?.message || message;
           } catch {
             if (xhr.responseText) {
               message = xhr.responseText;
@@ -150,7 +149,7 @@ export function GoogleUploadForm({
         };
         xhr.onerror = () => {
           activeRequestsRef.current.delete(item.id);
-          reject(new Error(`Network error while uploading ${item.file.name}.`));
+          reject(new Error(`Google direct upload failed for ${item.file.name}.`));
         };
         xhr.onabort = () => {
           activeRequestsRef.current.delete(item.id);
